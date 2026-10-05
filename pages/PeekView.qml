@@ -1,0 +1,72 @@
+import QtQuick
+import "../components"
+
+// Brief banner: icon (or artwork / Claude mark) on the left, two lines of text.
+Page {
+  id: view
+
+  property var island
+  readonly property var info: island.peekData
+
+  Accessible.role: Accessible.AlertMessage
+  Accessible.name: info.title + (info.subtitle ? ", " + info.subtitle : "")
+
+  Item {
+    id: lead
+    x: 14
+    width: 38; height: 38
+    anchors.verticalCenter: parent.verticalCenter
+
+    Art {
+      anchors.fill: parent
+      visible: view.info.icon === "music"
+      source: view.island.music.artUrl
+      radius: 10
+    }
+    Rectangle {
+      anchors.fill: parent
+      visible: view.info.icon !== "music"
+      radius: width / 2
+      color: Qt.rgba(view.info.tint.r, view.info.tint.g, view.info.tint.b, 0.18)
+      Icon {
+        anchors.centerIn: parent
+        size: 20
+        name: view.info.icon === "claude" ? "" : view.info.icon
+        source: view.info.icon === "claude" ? Theme.claudeLogo : ""
+        color: view.info.tint
+      }
+    }
+  }
+
+  Column {
+    anchors.left: lead.right
+    anchors.leftMargin: 12
+    anchors.right: parent.right
+    anchors.rightMargin: view.info.icon === "music" ? 50 : 20
+    anchors.verticalCenter: parent.verticalCenter
+    spacing: 2
+    Label {
+      width: parent.width
+      text: view.info.title
+      font.pixelSize: 15
+      strong: true
+    }
+    Label {
+      width: parent.width
+      visible: text !== ""
+      text: view.info.subtitle
+      font.pixelSize: 13
+      color: Theme.secondary
+    }
+  }
+
+  Equalizer {
+    visible: view.info.icon === "music"
+    anchors.right: parent.right
+    anchors.rightMargin: 18
+    anchors.verticalCenter: parent.verticalCenter
+    playing: view.island.music.playing
+    color: view.island.music.accent
+    maxHeight: 20
+  }
+}

@@ -1,0 +1,50 @@
+#!/bin/bash
+# Make room for the Dynamic Island in the middle of the Omarchy bar.
+#
+#   dynamic-island-bar-setup          move every center-section widget to the
+#                                      start of the right section (the island
+#                                      shows the clock while idle)
+#   dynamic-island-bar-setup --undo   restore the bar layout saved before
+#
+# The previous ~/.config/omarchy/shell.json is kept next to it as
+# shell.json.bak.dynamic-island.
+
+set -euo pipefail
+
+config="$HOME/.config/omarchy/shell.json"
+backup="$config.bak.dynamic-island"
+
+if [[ ${1:-} == "--undo" ]]; then
+  if [[ -f $backup ]]; then
+    cp "$backup" "$config"
+  else
+    # There was no shell.json before: going back means Omarchy's defaults.
+    rm -f "$config"
+  fi
+  echo "Restored the bar layout."
+  exit 0
+fi
+
+command -v omarchy >/dev/null || { echo "This needs Omarchy's 'omarchy' command." >&2; exit 1; }
+
+# Without a user shell.json the bar runs Omarchy's shipped layout; read the
+# center from there (`omarchy bar move` writes the user file itself).
+layout=$config
+[[ -f $layout ]] || layout="${OMARCHY_PATH:-/usr/share/omarchy}/config/omarchy/shell.json"
+[[ -f $layout ]] || { echo "Could not find the bar layout" >&2; exit 1; }
+
+[[ -f $config && ! -f $backup ]] && cp "$config" "$backup"
+
+mapfile -t center < <(jq -r '.bar.layout.center[]?.id // empty' "$layout")
+if ((${#center[@]} == 0)); then
+  echo "The bar center is already empty."
+  exit 0
+fi
+
+# Insert in reverse so the widgets keep their order at the start of the right.
+for ((i = ${#center[@]} - 1; i >= 0; i--)); do
+  omarchy bar move "${center[i]}" --section right --index 0 >/dev/null
+  echo "Moved ${center[i]} to the right section"
+done
+
+echo "Done. Undo with: $(basename "$0") --undo"

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.ofa14-prog.dynamic-island",
+  "name": "Dynamic Island",
+  "version": "1.0.0",
+  "author": "Ömer Faruk Altıntaş",
+  "license": "MIT",
+  "description": "An Apple-style Dynamic Island in the middle of the Omarchy bar: spring animations, now playing, timers, screen recording, a file shelf, launch shortcuts, and live Claude Code sessions with permission approve/deny right from the island.",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Island.qml"
+  },
+  "icon": "assets/icon.svg",
+  "homepage": "https://github.com/ofa14-prog/omarchy-dynamic-island"
+}

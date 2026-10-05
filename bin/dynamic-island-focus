@@ -1,0 +1,23 @@
+#!/bin/bash
+# Focus the terminal window hosting a Claude Code session.
+# Usage: dynamic-island-focus <pid> [<pid>...]   (the hook's ancestor chain)
+
+clients=$(hyprctl clients -j 2>/dev/null) || exit 1
+
+address=""
+for pid in "$@"; do
+  [[ $pid =~ ^[0-9]+$ ]] || continue
+  address=$(jq -r --argjson p "$pid" 'first(.[] | select(.pid == $p)).address // empty' <<<"$clients")
+  [[ -n $address ]] && break
+done
+
+# Single-process terminals (one server, many windows) never match the chain;
+# fall back to the window Omarchy launches agents in.
+if [[ -z $address ]]; then
+  address=$(jq -r 'first(.[] | select(.initialClass == "org.omarchy.agent")).address // empty' <<<"$clients")
+fi
+
+[[ -n $address ]] || exit 1
+
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null 2>&1 ||
+  hyprctl dispatch focuswindow "address:$address" >/dev/null

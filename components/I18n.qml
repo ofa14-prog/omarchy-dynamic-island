@@ -1,0 +1,161 @@
+pragma Singleton
+import QtQuick
+
+// UI strings. Source strings are Turkish; `t()` returns the English entry
+// when the language is "en" (or any language without a table yet).
+// Island.qml sets `lang` from the `language` config key ("auto" follows the
+// system locale: Turkish for tr_*, English otherwise).
+QtObject {
+  id: i18n
+
+  property string lang: "en"
+
+  function t(s) {
+    if (lang === "tr") return s
+    var v = en[s]
+    return v !== undefined ? v : s
+  }
+
+  readonly property var en: ({
+    // Island / shared
+    "Ajan": "Agent",
+    "Tarayıcı": "Browser",
+    "Dosyalar": "Files",
+    "Ekran": "Screenshot",
+    "Editör": "Editor",
+    "Claude izin istiyor": "Claude needs permission",
+    "Claude izin istiyor: ": "Claude needs permission: ",
+    "İzin verildi": "Allowed",
+    "Reddedildi": "Denied",
+    "Claude bitirdi": "Claude finished",
+    "Claude seni bekliyor": "Claude is waiting for you",
+    "Süre doldu": "Time's up",
+    "Zamanlayıcı bitti": "Timer finished",
+    "Şarj oluyor": "Charging",
+    " sn": "s",
+    " sa ": "h ",
+    " dk": " min",
+    "Zamanlayıcı": "Timer",
+    "Açık": "Open",
+    "Açmak için tıklayın": "Click to open",
+    "Albüm kapağı": "Album art",
+    "Claude çalışıyor": "Claude is working",
+    "Çalıyor": "Playing",
+    "Duraklatıldı": "Paused",
+
+    // Bubbles
+    "Müzik": "Music",
+    "Kronometre ": "Stopwatch ",
+    "Sayaç ": "Timer ",
+    " (duraklatıldı)": " (paused)",
+    "Ekran kaydı ": "Recording ",
+    "Ekran kaydı  ": "Recording  ",
+    " · durdurmak için tıkla": " · click to stop",
+    " · izin bekliyor": " · needs permission",
+    "Kayıt durduruluyor": "Stopping recording",
+    "Tıkla: aç. Sağ tık: öne getir.": "Click: open. Right-click: bring to front.",
+
+    // Claude
+    "İzin bekliyor · ": "Needs permission · ",
+    "Girdi bekliyor": "Waiting for input",
+    "Düşünüyor…": "Thinking…",
+    "Bağlamı sıkıştırıyor…": "Compacting context…",
+    "Araç": "Tool",
+    "Bitti": "Done",
+    "Hazır": "Ready",
+    " oturum": " sessions",
+    "Kullanım ayrıntıları": "Usage details",
+    " araç": " tools",
+    "Yanıtla": "Respond",
+    "İzin isteğini yanıtla": "Respond to permission request",
+    "Klasörü editörde aç": "Open folder in editor",
+    "Terminale git": "Go to terminal",
+    "Aktif oturum yok": "No active sessions",
+    "Claude Code bağlı değil": "Claude Code not connected",
+    "Bir oturum başlatınca burada görünür.": "Sessions show up here once you start one.",
+    "Hook'ları kurunca oturumlar ve izinler burada.": "Install the hooks to see sessions and permissions here.",
+    "Bağla": "Connect",
+    "Claude Code hook'larını kur": "Install Claude Code hooks",
+    "Yeni oturum": "New session",
+    "Yeni ": "New ",
+    " oturumu": " session",
+    "Etkin oturumun terminaline git": "Go to the active session's terminal",
+    "Etkin oturumun klasörünü editörde aç": "Open the active session's folder in the editor",
+    "Biten oturumları temizle": "Clear finished sessions",
+    "İzin gerekiyor": "Needs permission",
+    "Seni bekliyor": "Waiting for you",
+    "Sıkıştırıyor…": "Compacting…",
+    "Çalışıyor": "Working",
+    "Saat ": "Time ",
+    "Kalan süre ": "Remaining ",
+    "Geçen süre ": "Elapsed ",
+
+    // Home
+    " yüzde ": " percent ",
+    "5s": "5h",
+    "7g": "7d",
+    "5 sa": "5 h",
+    "Hafta": "Week",
+    "Pil": "Battery",
+    "Durdur": "Stop",
+    "Ekran kaydını durdur": "Stop screen recording",
+    "Kısayol": "Shortcut",
+    " dakikalık zamanlayıcı başlat": " minute timer",
+
+    // Music
+    "Oynatıcıyı göster": "Show player",
+    "Bir şey çalmıyor": "Nothing playing",
+    "Şarkı konumu": "Track position",
+    "Önceki parça": "Previous track",
+    "Duraklat": "Pause",
+    "Oynat": "Play",
+    "Boşluk": "Space",
+    "Sonraki parça": "Next track",
+
+    // Permission
+    "Reddet": "Deny",
+    "Esc veya N": "Esc or N",
+    "Her zaman": "Always",
+    "Bu oturumda her zaman izin ver": "Always allow in this session",
+    "İzin ver": "Allow",
+    "Enter veya Y": "Enter or Y",
+    "⏎ izin · esc ret": "⏎ allow · esc deny",
+    " · A hep": " · A always",
+    " · T terminal": " · T terminal",
+    "Terminalde aç": "Open in terminal",
+
+    // Shelf
+    "Rafa bırak": "Drop to shelve",
+    "Dosyaları buraya sürükle": "Drag files here",
+    "Daha sonra istediğin uygulamaya geri sürükle": "Drag them back out into any app later",
+    "Raf, ": "Shelf, ",
+    " dosya": " files",
+    " dosyasını raftan kaldır": ": remove from shelf",
+    "Yolları kopyala": "Copy paths",
+    "Tüm dosya yollarını panoya kopyala": "Copy all file paths to the clipboard",
+    "Rafı boşalt": "Clear shelf",
+    "Raftaki tüm dosyaları kaldır (dosyalar silinmez)": "Remove everything from the shelf (files are not deleted)",
+
+    // Tabs
+    "Ana": "Home",
+    "Sayaç": "Timer",
+    "Raf": "Shelf",
+    "Ana sayfa": "Home",
+    "Adayı kapat": "Close island",
+
+    // Timer
+    "Kronometre": "Stopwatch",
+    "Bir dakika ekle": "Add a minute",
+    "Devam et": "Resume",
+    "Tekrarla": "Repeat",
+    "Tamam": "OK",
+    "İptal": "Cancel",
+    "Bir dakika azalt": "One minute less",
+    "Süre ": "Duration ",
+    " dakika": " minutes",
+    "Bir dakika artır": "One minute more",
+    "Zamanlayıcıyı başlat": "Start timer",
+    " dakika seç": " minutes",
+    "Kronometre başlat": "Start stopwatch"
+  })
+}

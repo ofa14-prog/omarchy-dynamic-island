@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+"""Claude Code -> Dynamic Island bridge.
+
+Registered as a Claude Code hook for every lifecycle event. Ordinary events are
+fire-and-forget lines on the island's unix socket. PermissionRequest blocks on
+the socket until the island answers; Claude Code races this hook against its
+own terminal dialog, so answering in either place wins and the other side is
+cancelled (the hook is killed and the island sees the socket close).
+
+When the island is not running the hook prints nothing and exits 0, so Claude
+Code behaves exactly as if the hook did not exist.
+"""
+
+import json
+import os
+import socket
+import sys
+import time
+
+RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+SOCK = os.path.join(RUNTIME, "dynamic-island", "claude.sock")
+
+
+def short(value, limit=400):
+    text = str(value or "").strip()
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def rel(path, cwd):
+    if not path:
+        return ""
+    try:
+        r = os.path.relpath(path, cwd)
+        return path if r.startswith("../..") else r
+    except ValueError:
+        return path
+
+
+def diff_preview(old, new, limit=6):
+    old_lines = str(old or "").splitlines()
+    new_lines = str(new or "").splitlines()
+    out = [f"- {l}" for l in old_lines[:limit]]
+    if len(old_lines) > limit:
+        out.append(f"- … (+{len(old_lines) - limit})")
+    out += [f"+ {l}" for l in new_lines[:limit]]
+    if len(new_lines) > limit:
+        out.append(f"+ … (+{len(new_lines) - limit})")
+    return "\n".join(out)
+
+
+def describe_tool(name, tool_input, cwd):
+    """(title, detail) pair the island can show without knowing every tool."""
+    ti = tool_input if isinstance(tool_input, dict) else {}
+    if name == "Bash":
+        return short(ti.get("description") or "Command", 80), short(ti.get("command"), 600)
+    if name in ("Edit", "MultiEdit"):
+        path = rel(ti.get("file_path"), cwd)
+        if name == "Edit":
+            return path, short(diff_preview(ti.get("old_string"), ti.get("new_string")), 700)
+        edits = ti.get("edits") or []
+        return path, f"{len(edits)} edits"
+    if name == "Write":
+        content = str(ti.get("content") or "")
+        return rel(ti.get("file_path"), cwd), short("\n".join(content.splitlines()[:8]), 600)
+    if name == "NotebookEdit":
+        return rel(ti.get("notebook_path"), cwd), short(ti.get("new_source"), 400)
+    if name == "Read":
+        return rel(ti.get("file_path"), cwd), ""
+    if name in ("Glob", "Grep"):
+        return short(ti.get("pattern"), 120), rel(ti.get("path"), cwd)
+    if name == "WebFetch":
+        return short(ti.get("url"), 160), short(ti.get("prompt"), 200)
+    if name == "WebSearch":
+        return short(ti.get("query"), 160), ""
+    if name in ("Task", "Agent"):
+        return short(ti.get("description") or ti.get("subagent_type"), 120), short(ti.get("prompt"), 300)
+    if name.startswith("mcp__"):
+        parts = name.split("__")
+        server = parts[1] if len(parts) > 1 else "mcp"
+        tool = parts[2] if len(parts) > 2 else ""
+        return f"{server} · {tool}", short(json.dumps(ti, ensure_ascii=False), 400)
+    first = ""
+    for key in ("file_path", "path", "command", "url", "query", "description"):
+        if ti.get(key):
+            first = short(ti.get(key), 160)
+            break
+    return first, short(json.dumps(ti, ensure_ascii=False), 400) if ti else ""
+
+
+def ancestor_pids(limit=16):
+    """PID chain from this hook up to init, so the island can find the
+    terminal window that hosts the session and know when it has exited."""
+    pids, pid = [], os.getppid()
+    claude_pid = 0
+    while pid > 1 and len(pids) < limit:
+        pids.append(pid)
+        try:
+            with open(f"/proc/{pid}/comm") as f:
+                comm = f.read().strip()
+            if not claude_pid and comm.startswith("claude"):
+                claude_pid = pid
+            with open(f"/proc/{pid}/stat") as f:
+                stat = f.read()
+            pid = int(stat[stat.rindex(")") + 2 :].split()[1])
+        except (OSError, ValueError):
+            break
+    return pids, claude_pid
+
+
+def build_message(data):
+    event = data.get("hook_event_name", "")
+    cwd = data.get("cwd") or os.getcwd()
+    pids, claude_pid = ancestor_pids()
+    msg = {
+        "agent": "claude",
+        "event": event,
+        "session": data.get("session_id", ""),
+        "cwd": cwd,
+        "project": os.path.basename(cwd.rstrip("/")) or cwd,
+        "mode": data.get("permission_mode", ""),
+        "pids": pids,
+        "claudePid": claude_pid,
+        "ts": time.time_ns() // 1000,
+    }
+    tool = data.get("tool_name")
+    if tool:
+        title, detail = describe_tool(tool, data.get("tool_input"), cwd)
+        msg.update({"tool": tool, "title": title, "detail": detail})
+    if event == "UserPromptSubmit":
+        msg["prompt"] = short(data.get("prompt"), 240)
+    if event in ("Notification",):
+        msg["message"] = short(data.get("message"), 240)
+        msg["kind"] = data.get("notification_type", "")
+    if event == "SessionStart":
+        msg["source"] = data.get("source", "")
+    if event == "PermissionRequest":
+        suggestions = data.get("permission_suggestions")
+        msg["canAlways"] = isinstance(suggestions, list) and len(suggestions) > 0
+    return msg
+
+
+def main():
+    try:
+        data = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        return 0
+    if not os.path.exists(SOCK):
+        return 0
+
+    msg = build_message(data)
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(0.5)
+        sock.connect(SOCK)
+    except OSError:
+        return 0
+
+    if msg["event"] != "PermissionRequest":
+        # Wait for the island's "ok" so the line is read before we hang up;
+        # closing straight after sending can drop it on the island side.
+        try:
+            sock.sendall((json.dumps(msg, ensure_ascii=False) + "\n").encode())
+            sock.settimeout(1.0)
+            sock.recv(16)
+        except OSError:
+            pass
+        finally:
+            sock.close()
+        return 0
+
+    # Blocking request: wait for the island's verdict line.
+    msg["request"] = f"{os.getpid()}-{msg['session'][:8]}"
+    try:
+        sock.sendall((json.dumps(msg, ensure_ascii=False) + "\n").encode())
+        sock.settimeout(None)
+        buf = b""
+        while b"\n" not in buf:
+            chunk = sock.recv(4096)
+            if not chunk:
+                return 0  # island went away: fall back to the terminal dialog
+            buf += chunk
+        reply = json.loads(buf.split(b"\n", 1)[0].decode() or "{}")
+    except (OSError, ValueError):
+        return 0
+    finally:
+        sock.close()
+
+    verdict = reply.get("behavior")
+    if verdict == "allow":
+        decision = {"behavior": "allow"}
+    elif verdict == "always":
+        decision = {"behavior": "allow"}
+        if isinstance(data.get("permission_suggestions"), list):
+            decision["updatedPermissions"] = data["permission_suggestions"]
+    elif verdict == "deny":
+        decision = {
+            "behavior": "deny",
+            "message": reply.get("message") or "The user denied this from the Dynamic Island.",
+        }
+        if reply.get("interrupt"):
+            decision["interrupt"] = True
+    else:
+        return 0  # "pass": let the terminal dialog decide
+
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": decision}}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

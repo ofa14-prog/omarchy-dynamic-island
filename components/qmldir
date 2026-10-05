@@ -1,0 +1,12 @@
+module components
+singleton Theme 1.0 Theme.qml
+IslandButton 1.0 IslandButton.qml
+ClaudeSpinner 1.0 ClaudeSpinner.qml
+Equalizer 1.0 Equalizer.qml
+ProgressRing 1.0 ProgressRing.qml
+Page 1.0 Page.qml
+Art 1.0 Art.qml
+Label 1.0 Label.qml
+Icon 1.0 Icon.qml
+ShimmerText 1.0 ShimmerText.qml
+singleton I18n 1.0 I18n.qml

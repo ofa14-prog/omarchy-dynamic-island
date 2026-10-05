@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Extract the island's icons from Reicon (https://github.com/dqev/reicon, MIT;
+base icons from Solar Icons, CC BY 4.0) as white 24x24 SVGs.
+
+  git clone --depth 1 https://github.com/dqev/reicon /tmp/reicon
+  tools/build-icons.py /tmp/reicon/data/icon-data.json
+
+Brand marks are not in Reicon and come from their owners: the Claude mark from
+Simple Icons (icons/brand/claude.svg), VS Code from the installed package
+(/usr/share/pixmaps/vscode.png).
+"""
+import json
+import os
+import sys
+
+# island name: (reicon name, weight)
+ICONS = {
+    "home": ("home", "Outline"), "home-fill": ("home", "Filled"),
+    "music": ("music-note", "Outline"), "music-fill": ("music-note", "Filled"),
+    "timer": ("stopwatch", "Outline"), "timer-fill": ("stopwatch", "Filled"),
+    "shelf": ("archive", "Outline"), "shelf-fill": ("archive", "Filled"),
+    "play": ("play", "Filled"), "pause": ("pause", "Filled"),
+    "prev": ("skip-prev", "Filled"), "next": ("skip-next", "Filled"),
+    "x": ("x", "Outline"), "check": ("check", "Outline"), "check-all": ("check-read", "Outline"),
+    "plus": ("plus", "Outline"), "minus": ("minus", "Outline"),
+    "chevron-up": ("chevron-up", "Outline"),
+    "terminal": ("terminal-square", "Outline"), "code": ("code", "Outline"),
+    "folder": ("folder", "Outline"), "camera": ("camera", "Outline"),
+    "alarm": ("alarm", "Outline"), "restart": ("restart", "Outline"),
+    "copy": ("copy", "Outline"), "trash": ("trash", "Outline"),
+    "file": ("file", "Outline"), "file-pdf": ("file-pdf", "Outline"), "file-zip": ("file-zip", "Outline"),
+    "image": ("image", "Outline"), "video": ("video", "Outline"),
+    "battery-charge": ("battery-charging", "Outline"),
+    "chat": ("chat-round-dots", "Outline"), "arrow-up-right": ("arrow-right-up", "Outline"),
+    "bell": ("bell", "Outline"), "globe": ("globe", "Outline"), "sparkles": ("sparkles", "Outline"), "record": ("record-circle", "Filled"),
+}
+
+
+def main():
+    src = sys.argv[1] if len(sys.argv) > 1 else "/tmp/reicon/data/icon-data.json"
+    out = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "icons")
+    data = json.load(open(src))
+    index = {n: v for cat in data["categories"].values() for n, v in cat["icons"].items()}
+    for name, (rname, weight) in ICONS.items():
+        code = index[rname]["weights"][weight]["code"].replace("currentColor", "#ffffff")
+        svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96" fill="#ffffff">{code}</svg>\n'
+        with open(os.path.join(out, name + ".svg"), "w") as f:
+            f.write(svg)
+    print(f"{len(ICONS)} icons -> {os.path.normpath(out)}")
+
+
+if __name__ == "__main__":
+    main()
