@@ -1,23 +1,30 @@
 import QtQuick
 import "../components"
 
-// Every Claude Code session: what it is doing right now, and a jump to it.
+// Every coding-agent session: what it is doing right now, and a jump to it.
+// Branded after Omarchy's default agent; each session row keeps its own agent.
 Page {
   id: page
 
   property var island
-  readonly property var claude: island.claude
-  readonly property var sessions: claude.sessionList.slice(0, 4)
+  readonly property var agents: island.agents
+  readonly property var sessions: agents.sessionList.slice(0, 4)
 
   implicitHeight: col.implicitHeight + 8
 
+  readonly property var profile: island.agent
+  // "full" / "status": the agent reports sessions once connected;
+  // "none": it has no event API, so there is nothing to connect.
+  readonly property bool connectable: profile.integration !== "none"
+  readonly property bool connected: agents.hooksInstalled
+
   function working(s) {
-    var st = claude.displayState(s)
+    var st = agents.displayState(s)
     return st === "thinking" || st === "tool" || st === "compacting"
   }
 
   function stateText(s) {
-    switch (claude.displayState(s)) {
+    switch (agents.displayState(s)) {
       case "waiting": return I18n.t("İzin bekliyor · ") + (s.tool || "")
       case "input": return s.message || I18n.t("Girdi bekliyor")
       case "thinking": return I18n.t("Düşünüyor…")
@@ -29,8 +36,8 @@ Page {
   }
 
   function stateColor(s) {
-    var st = claude.displayState(s)
-    if (st === "waiting" || st === "input" || working(s)) return Theme.claude
+    var st = agents.displayState(s)
+    if (st === "waiting" || st === "input" || working(s)) return island.profile(s.agent).color
     if (st === "done") return Theme.green
     return Theme.secondary
   }
@@ -49,18 +56,20 @@ Page {
         spacing: 10
         Icon {
           anchors.verticalCenter: parent.verticalCenter
-          source: Theme.claudeLogo
+          source: island.agentLogo
+          name: island.agentLogo ? "" : "sparkles"
+          color: island.agentColor
           size: 22
         }
         Label {
           anchors.verticalCenter: parent.verticalCenter
-          text: "Claude Code"
+          text: island.agentProduct
           font.pixelSize: 16
           strong: true
         }
         Label {
           anchors.verticalCenter: parent.verticalCenter
-          text: claude.sessionList.length > 0 ? claude.sessionList.length + I18n.t(" oturum") : ""
+          text: agents.sessionList.length > 0 ? agents.sessionList.length + I18n.t(" oturum") : ""
           font.pixelSize: 13
           color: Theme.tertiary
         }
@@ -71,11 +80,11 @@ Page {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         spacing: 12
-        visible: claude.usage.session >= 0
+        visible: agents.usage.session >= 0
         Repeater {
           model: [
-            { label: I18n.t("5s"), v: claude.usage.session },
-            { label: I18n.t("7g"), v: claude.usage.weekly }
+            { label: I18n.t("5s"), v: agents.usage.session },
+            { label: I18n.t("7g"), v: agents.usage.weekly }
           ]
           delegate: Row {
             required property var modelData
@@ -89,7 +98,7 @@ Page {
               Rectangle {
                 width: Math.max(6, parent.width * Math.min(1, modelData.v))
                 height: parent.height; radius: 3
-                color: modelData.v >= 0.9 ? Theme.red : modelData.v >= 0.7 ? Theme.orange : Theme.claude
+                color: modelData.v >= 0.9 ? Theme.red : modelData.v >= 0.7 ? Theme.orange : island.agentColor
               }
             }
             Label { text: Math.round(modelData.v * 100) + "%"; font.pixelSize: 12; tabular: true; color: Theme.secondary; anchors.verticalCenter: parent.verticalCenter }
@@ -99,7 +108,7 @@ Page {
       MouseArea {
         anchors.fill: usageRow
         cursorShape: Qt.PointingHandCursor
-        onClicked: claude.openUsage()
+        onClicked: agents.openUsage()
         Accessible.role: Accessible.Button
         Accessible.name: I18n.t("Kullanım ayrıntıları")
       }
@@ -117,13 +126,13 @@ Page {
           id: row
           required property var modelData
           readonly property var s: modelData
-          readonly property bool waiting: claude.displayState(s) === "waiting"
+          readonly property bool waiting: agents.displayState(s) === "waiting"
           width: parent.width
           height: 58
           radius: 18
           color: rowMouse.containsMouse ? Theme.fillHover : Theme.fill
           border.width: waiting ? 1 : 0
-          border.color: Theme.claude
+          border.color: island.profile(s.agent).color
           Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
 
           MouseArea {
@@ -131,7 +140,7 @@ Page {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: row.waiting ? island.setPage("permission") : claude.focusTerminal(row.s)
+            onClicked: row.waiting ? island.setPage("permission") : agents.focusTerminal(row.s)
           }
 
           Accessible.role: Accessible.ListItem
@@ -142,13 +151,14 @@ Page {
             x: 14
             width: 24; height: 24
             anchors.verticalCenter: parent.verticalCenter
-            ClaudeSpinner {
+            AgentSpinner {
               anchors.centerIn: parent
+              agent: row.s.agent || "claude"
               size: 20
-              visible: claude.displayState(row.s) !== "done"
+              visible: agents.displayState(row.s) !== "done"
               running: page.working(row.s)
             }
-            Icon { anchors.centerIn: parent; visible: claude.displayState(row.s) === "done"; name: "check"; size: 20; color: Theme.green }
+            Icon { anchors.centerIn: parent; visible: agents.displayState(row.s) === "done"; name: "check"; size: 20; color: Theme.green }
           }
 
           Column {
@@ -169,7 +179,7 @@ Page {
               }
               Label {
                 id: timeLabel
-                visible: claude.isBusy(row.s) && row.s.turnStartedAt > 0
+                visible: agents.isBusy(row.s) && row.s.turnStartedAt > 0
                 text: island.duration(island.nowMs - row.s.turnStartedAt) + (row.s.toolCount ? " · " + row.s.toolCount + I18n.t(" araç") : "")
                 font.pixelSize: 12
                 tabular: true
@@ -182,6 +192,7 @@ Page {
               running: page.working(row.s)
               font.pixelSize: 13
               baseColor: page.stateColor(row.s)
+              glowColor: island.profile(row.s.agent).glow
             }
           }
 
@@ -197,7 +208,7 @@ Page {
               text: I18n.t("Yanıtla")
               fontSize: 13
               prominent: true
-              tint: Theme.claude
+              tint: island.profile(row.s.agent).color
               accessibleName: I18n.t("İzin isteğini yanıtla")
               onClicked: island.setPage("permission")
             }
@@ -207,13 +218,13 @@ Page {
               icon: island.apps.editorIcon ? "" : "code"
               iconSize: 18
               accessibleName: I18n.t("Klasörü editörde aç")
-              onClicked: { claude.openInEditor(row.s); island.collapse() }
+              onClicked: { agents.openInEditor(row.s); island.collapse() }
             }
             IslandButton {
               size: 34
               icon: "terminal"
               accessibleName: I18n.t("Terminale git")
-              onClicked: { claude.focusTerminal(row.s); island.collapse() }
+              onClicked: { agents.focusTerminal(row.s); island.collapse() }
             }
           }
         }
@@ -236,29 +247,33 @@ Page {
         spacing: 3
         Label {
           width: parent.width
-          text: claude.hooksInstalled ? I18n.t("Aktif oturum yok") : I18n.t("Claude Code bağlı değil")
+          text: !page.connectable ? I18n.t("%1 canlı oturum paylaşmıyor").arg(island.agentProduct)
+            : page.connected ? I18n.t("Aktif oturum yok") : I18n.t("%1 bağlı değil").arg(island.agentProduct)
           font.pixelSize: 14
           strong: true
         }
         Label {
           width: parent.width
-          text: claude.hooksInstalled ? I18n.t("Bir oturum başlatınca burada görünür.") : I18n.t("Hook'ları kurunca oturumlar ve izinler burada.")
+          text: !page.connectable ? I18n.t("Kısayol ve kullanım bilgisi yine burada.")
+            : page.connected ? I18n.t("Bir oturum başlatınca burada görünür.")
+            : page.profile.integration === "full" ? I18n.t("Bağlayınca oturumlar ve izinler burada.")
+            : I18n.t("Bağlayınca oturumlar burada.")
           font.pixelSize: 13
           color: Theme.secondary
         }
       }
       IslandButton {
         id: connect
-        visible: !claude.hooksInstalled
+        visible: page.connectable && !page.connected
         anchors.right: parent.right
         anchors.rightMargin: 14
         anchors.verticalCenter: parent.verticalCenter
         size: 36
         text: I18n.t("Bağla")
         prominent: true
-        tint: Theme.claude
-        accessibleName: I18n.t("Claude Code hook'larını kur")
-        onClicked: claude.installHooks()
+        tint: island.agentColor
+        accessibleName: I18n.t("%1 bağlantısını kur").arg(island.agentProduct)
+        onClicked: agents.installHooks(island.agentId)
       }
     }
 
@@ -271,16 +286,16 @@ Page {
         text: I18n.t("Yeni oturum")
         fontSize: 13
         accessibleName: I18n.t("Yeni ") + island.agentName + I18n.t(" oturumu")
-        onClicked: { claude.newSession(); island.collapse() }
+        onClicked: { agents.newSession(); island.collapse() }
       }
       IslandButton {
         size: 36
         icon: "terminal"
         text: "Terminal"
         fontSize: 13
-        enabled2: claude.focusSession !== null
+        enabled2: agents.focusSession !== null
         accessibleName: I18n.t("Etkin oturumun terminaline git")
-        onClicked: { claude.focusTerminal(null); island.collapse() }
+        onClicked: { agents.focusTerminal(null); island.collapse() }
       }
       IslandButton {
         size: 36
@@ -288,18 +303,18 @@ Page {
         icon: island.apps.editorIcon ? "" : "code"
         text: island.editorLabels[island.apps.editor] || I18n.t("Editör")
         fontSize: 13
-        enabled2: claude.focusSession !== null
+        enabled2: agents.focusSession !== null
         accessibleName: I18n.t("Etkin oturumun klasörünü editörde aç")
-        onClicked: { claude.openInEditor(null); island.collapse() }
+        onClicked: { agents.openInEditor(null); island.collapse() }
       }
       IslandButton {
         size: 36
         icon: "trash"
         filled: false
         tint: Theme.secondary
-        visible: claude.sessionList.some(s => !claude.isBusy(s))
+        visible: agents.sessionList.some(s => !agents.isBusy(s))
         accessibleName: I18n.t("Biten oturumları temizle")
-        onClicked: claude.clearFinished()
+        onClicked: agents.clearFinished()
       }
     }
   }

@@ -12,6 +12,7 @@ Text {
   property int band: 3
   property int pos: -band
 
+  renderType: Text.NativeRendering
   textFormat: running && !Theme.reduceMotion ? Text.StyledText : Text.PlainText
   font.family: Theme.font
   font.pixelSize: 14

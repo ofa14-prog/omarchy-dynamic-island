@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Connect coding agents to the Dynamic Island, or disconnect them.
+
+  dynamic-island-agent-setup [agent…]            install (default: claude)
+  dynamic-island-agent-setup --remove [agent…]   remove only the island's parts
+  dynamic-island-agent-setup --status            JSON: which agents are connected
+
+  agents: claude, codex, gemini, opencode, or "all"
+
+Every config file is backed up before it is changed, and only entries that
+point at this plugin are ever added or removed.
+"""
+
+import json
+import os
+import shutil
+import sys
+import time
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+HOOK = os.path.join(HERE, "dynamic-island-hook")
+OPENCODE_PLUGIN = os.path.join(HERE, "..", "agents", "opencode", "dynamic-island.js")
+HOME = os.path.expanduser("~")
+XDG_CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
+
+AGENTS = ["claude", "codex", "gemini", "opencode"]
+
+
+def claude_file():
+    return os.path.join(os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(HOME, ".claude"), "settings.json")
+
+
+def codex_file():
+    return os.path.join(os.environ.get("CODEX_HOME") or os.path.join(HOME, ".codex"), "hooks.json")
+
+
+def gemini_file():
+    return os.path.join(HOME, ".gemini", "settings.json")
+
+
+def opencode_file():
+    return os.path.join(XDG_CONFIG, "opencode", "plugins", "dynamic-island.js")
+
+
+def hook_command(agent):
+    return f"{HOOK} --agent {agent}" if agent != "claude" else HOOK
+
+
+# event -> async?  (PermissionRequest blocks until you answer)
+CLAUDE_EVENTS = {"SessionStart": True, "SessionEnd": True, "UserPromptSubmit": True, "PreToolUse": True,
+                 "PostToolUse": True, "Notification": True, "Stop": True, "PreCompact": True,
+                 "PermissionRequest": False}
+CODEX_EVENTS = {"SessionStart": True, "SessionEnd": True, "UserPromptSubmit": True, "PreToolUse": True,
+                "PostToolUse": True, "Stop": True, "PreCompact": True, "PermissionRequest": False}
+GEMINI_EVENTS = ["SessionStart", "SessionEnd", "BeforeAgent", "AfterAgent", "BeforeTool", "AfterTool",
+                 "PreCompress", "Notification"]
+TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PermissionRequest"}
+
+
+def load(path):
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        text = f.read().strip()
+    return json.loads(text) if text else {}
+
+
+def save(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path):
+        shutil.copy2(path, f"{path}.bak.dynamic-island.{int(time.time())}")
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def is_ours(entry):
+    return any("dynamic-island-hook" in str(h.get("command", "")) for h in entry.get("hooks", []))
+
+
+def strip(settings):
+    hooks = settings.get("hooks") or {}
+    for event in list(hooks):
+        if not isinstance(hooks[event], list):
+            continue
+        hooks[event] = [e for e in hooks[event] if not is_ours(e)]
+        if not hooks[event]:
+            del hooks[event]
+    if hooks:
+        settings["hooks"] = hooks
+    else:
+        settings.pop("hooks", None)
+
+
+def has_ours(settings):
+    return any(is_ours(e) for entries in (settings.get("hooks") or {}).values()
+               if isinstance(entries, list) for e in entries)
+
+
+def install_hooks(path, agent, events, seconds=True, matcher="*"):
+    settings = load(path)
+    strip(settings)
+    hooks = settings.setdefault("hooks", {})
+    for event, is_async in events.items():
+        handler = {"type": "command", "command": hook_command(agent)}
+        if is_async is None:          # Gemini: synchronous, timeout in ms
+            handler["timeout"] = 5000
+        elif is_async:
+            handler.update({"async": True, "timeout": 5})
+        else:
+            # A day: the hook waits for your answer while the agent's own
+            # prompt stays live in the terminal.
+            handler["timeout"] = 86400
+        entry = {"hooks": [handler]}
+        if matcher and event in TOOL_EVENTS:
+            entry["matcher"] = matcher
+        hooks.setdefault(event, []).append(entry)
+    save(path, settings)
+
+
+def remove_hooks(path):
+    if not os.path.exists(path):
+        return
+    settings = load(path)
+    if not has_ours(settings):
+        return
+    strip(settings)
+    save(path, settings)
+
+
+def install(agent):
+    if agent == "claude":
+        install_hooks(claude_file(), agent, CLAUDE_EVENTS)
+        return claude_file()
+    if agent == "codex":
+        install_hooks(codex_file(), agent, CODEX_EVENTS, matcher=None)
+        return codex_file()
+    if agent == "gemini":
+        install_hooks(gemini_file(), agent, {e: None for e in GEMINI_EVENTS}, matcher=None)
+        return gemini_file()
+    if agent == "opencode":
+        target = opencode_file()
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        if os.path.lexists(target):
+            os.remove(target)
+        os.symlink(os.path.realpath(OPENCODE_PLUGIN), target)
+        return target
+    raise SystemExit(f"Unknown agent: {agent} (choose from {', '.join(AGENTS)})")
+
+
+def remove(agent):
+    if agent == "claude":
+        remove_hooks(claude_file())
+    elif agent == "codex":
+        remove_hooks(codex_file())
+    elif agent == "gemini":
+        remove_hooks(gemini_file())
+    elif agent == "opencode":
+        target = opencode_file()
+        if os.path.islink(target) and "dynamic-island" in os.readlink(target):
+            os.remove(target)
+
+
+def status():
+    def hooked(path):
+        try:
+            return has_ours(load(path))
+        except (OSError, ValueError):
+            return False
+    return {
+        "claude": hooked(claude_file()),
+        "codex": hooked(codex_file()),
+        "gemini": hooked(gemini_file()),
+        "opencode": os.path.lexists(opencode_file()),
+    }
+
+
+def main():
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--status" in sys.argv:
+        print(json.dumps(status()))
+        return
+    agents = AGENTS if "all" in args else (args or ["claude"])
+    for agent in agents:
+        if "--remove" in sys.argv:
+            remove(agent)
+            print(f"Disconnected {agent} from the Dynamic Island")
+        else:
+            print(f"Connected {agent} to the Dynamic Island ({install(agent)})")
+
+
+if __name__ == "__main__":
+    main()

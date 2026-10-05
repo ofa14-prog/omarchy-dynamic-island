@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Claude Code -> Dynamic Island bridge.
+"""Coding agent -> Dynamic Island bridge.
 
-Registered as a Claude Code hook for every lifecycle event. Ordinary events are
-fire-and-forget lines on the island's unix socket. PermissionRequest blocks on
-the socket until the island answers; Claude Code races this hook against its
-own terminal dialog, so answering in either place wins and the other side is
-cancelled (the hook is killed and the island sees the socket close).
+    dynamic-island-hook [--agent claude|codex|gemini]
 
-When the island is not running the hook prints nothing and exits 0, so Claude
-Code behaves exactly as if the hook did not exist.
+Registered as a lifecycle hook by bin/dynamic-island-agent-setup. Claude Code
+and Codex share one hook protocol; Gemini CLI's events are mapped onto it.
+Ordinary events are one JSON line on the island's unix socket. A
+PermissionRequest (Claude Code, Codex) blocks on the socket until the island
+answers; the agent races this hook against its own terminal prompt, so
+answering in either place wins and the other side is cancelled.
+
+When the island is not running the hook prints nothing and exits 0, so the
+agent behaves exactly as if the hook did not exist.
 """
 
 import json
@@ -18,7 +21,21 @@ import sys
 import time
 
 RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
-SOCK = os.path.join(RUNTIME, "dynamic-island", "claude.sock")
+SOCK = os.path.join(RUNTIME, "dynamic-island", "agents.sock")
+
+# Gemini CLI event names -> the shared vocabulary.
+GEMINI_EVENTS = {
+    "SessionStart": "SessionStart",
+    "SessionEnd": "SessionEnd",
+    "BeforeAgent": "UserPromptSubmit",
+    "AfterAgent": "Stop",
+    "BeforeTool": "PreToolUse",
+    "AfterTool": "PostToolUse",
+    "PreCompress": "PreCompact",
+    "Notification": "Notification",
+}
+
+SHELLS = {"sh", "bash", "dash", "zsh", "fish", "env", "timeout", "python3", "python"}
 
 
 def short(value, limit=400):
@@ -51,26 +68,32 @@ def diff_preview(old, new, limit=6):
 def describe_tool(name, tool_input, cwd):
     """(title, detail) pair the island can show without knowing every tool."""
     ti = tool_input if isinstance(tool_input, dict) else {}
-    if name == "Bash":
-        return short(ti.get("description") or "Command", 80), short(ti.get("command"), 600)
-    if name in ("Edit", "MultiEdit"):
-        path = rel(ti.get("file_path"), cwd)
-        if name == "Edit":
-            return path, short(diff_preview(ti.get("old_string"), ti.get("new_string")), 700)
-        edits = ti.get("edits") or []
-        return path, f"{len(edits)} edits"
-    if name == "Write":
+    path = ti.get("file_path") or ti.get("absolute_path") or ti.get("path") or ti.get("notebook_path")
+    if name in ("Bash", "run_shell_command", "shell", "exec_command"):
+        cmd = ti.get("command") or ti.get("cmd")
+        if isinstance(cmd, list):
+            cmd = " ".join(str(c) for c in cmd)
+        return short(ti.get("description") or "Command", 80), short(cmd, 600)
+    if name in ("Edit", "replace"):
+        return rel(path, cwd), short(diff_preview(ti.get("old_string"), ti.get("new_string")), 700)
+    if name == "MultiEdit":
+        return rel(path, cwd), f"{len(ti.get('edits') or [])} edits"
+    if name in ("Write", "write_file"):
         content = str(ti.get("content") or "")
-        return rel(ti.get("file_path"), cwd), short("\n".join(content.splitlines()[:8]), 600)
+        return rel(path, cwd), short("\n".join(content.splitlines()[:8]), 600)
+    if name == "apply_patch":
+        patch = str(ti.get("input") or ti.get("patch") or "")
+        files = [l.split(":", 1)[1].strip() for l in patch.splitlines() if l.startswith("*** ") and ":" in l]
+        return short(", ".join(files) or "patch", 120), short("\n".join(patch.splitlines()[:10]), 700)
     if name == "NotebookEdit":
-        return rel(ti.get("notebook_path"), cwd), short(ti.get("new_source"), 400)
-    if name == "Read":
-        return rel(ti.get("file_path"), cwd), ""
-    if name in ("Glob", "Grep"):
+        return rel(path, cwd), short(ti.get("new_source"), 400)
+    if name in ("Read", "read_file", "read_many_files"):
+        return rel(path, cwd), ""
+    if name in ("Glob", "Grep", "glob", "search_file_content"):
         return short(ti.get("pattern"), 120), rel(ti.get("path"), cwd)
-    if name == "WebFetch":
-        return short(ti.get("url"), 160), short(ti.get("prompt"), 200)
-    if name == "WebSearch":
+    if name in ("WebFetch", "web_fetch"):
+        return short(ti.get("url") or ti.get("prompt"), 160), short(ti.get("prompt"), 200)
+    if name in ("WebSearch", "google_web_search", "web_search"):
         return short(ti.get("query"), 160), ""
     if name in ("Task", "Agent"):
         return short(ti.get("description") or ti.get("subagent_type"), 120), short(ti.get("prompt"), 300)
@@ -89,38 +112,44 @@ def describe_tool(name, tool_input, cwd):
 
 def ancestor_pids(limit=16):
     """PID chain from this hook up to init, so the island can find the
-    terminal window that hosts the session and know when it has exited."""
+    terminal window that hosts the session and know when it has exited.
+    The agent is the first ancestor that is not a shell wrapper."""
     pids, pid = [], os.getppid()
-    claude_pid = 0
+    agent_pid = 0
     while pid > 1 and len(pids) < limit:
         pids.append(pid)
         try:
             with open(f"/proc/{pid}/comm") as f:
                 comm = f.read().strip()
-            if not claude_pid and comm.startswith("claude"):
-                claude_pid = pid
+            if not agent_pid and comm not in SHELLS:
+                agent_pid = pid
             with open(f"/proc/{pid}/stat") as f:
                 stat = f.read()
             pid = int(stat[stat.rindex(")") + 2 :].split()[1])
         except (OSError, ValueError):
             break
-    return pids, claude_pid
+    return pids, agent_pid
 
 
-def build_message(data):
+def build_message(agent, data):
     event = data.get("hook_event_name", "")
+    if agent == "gemini":
+        event = GEMINI_EVENTS.get(event, event)
     cwd = data.get("cwd") or os.getcwd()
-    pids, claude_pid = ancestor_pids()
+    pids, agent_pid = ancestor_pids()
     msg = {
-        "agent": "claude",
+        "agent": agent,
         "event": event,
         "session": data.get("session_id", ""),
         "cwd": cwd,
         "project": os.path.basename(cwd.rstrip("/")) or cwd,
         "mode": data.get("permission_mode", ""),
         "pids": pids,
-        "claudePid": claude_pid,
+        "agentPid": agent_pid,
         "ts": time.time_ns() // 1000,
+        # Claude Code: "cli" when interactive, sdk-* for `claude -p` and other
+        # headless runs, which the island keeps quiet about.
+        "entry": os.environ.get("CLAUDE_CODE_ENTRYPOINT", "") if agent == "claude" else "",
     }
     tool = data.get("tool_name")
     if tool:
@@ -128,32 +157,54 @@ def build_message(data):
         msg.update({"tool": tool, "title": title, "detail": detail})
     if event == "UserPromptSubmit":
         msg["prompt"] = short(data.get("prompt"), 240)
-    if event in ("Notification",):
+    if event == "Notification":
         msg["message"] = short(data.get("message"), 240)
         msg["kind"] = data.get("notification_type", "")
+        # Gemini CLI announces its tool confirmations here but cannot take an
+        # answer from a hook: show it as a permission notice.
+        if agent == "gemini" and msg["kind"] == "ToolPermission":
+            msg["event"] = "PermissionNotice"
+            details = data.get("details") if isinstance(data.get("details"), dict) else {}
+            msg["tool"] = details.get("tool_name") or details.get("toolName") or details.get("type") or ""
+            msg["title"] = short(details.get("title") or details.get("command") or data.get("message"), 160)
     if event == "SessionStart":
         msg["source"] = data.get("source", "")
     if event == "PermissionRequest":
         suggestions = data.get("permission_suggestions")
-        msg["canAlways"] = isinstance(suggestions, list) and len(suggestions) > 0
+        # Codex has no "always" answer for hooks yet.
+        msg["canAlways"] = agent == "claude" and isinstance(suggestions, list) and len(suggestions) > 0
     return msg
 
 
 def main():
+    agent = "claude"
+    if "--agent" in sys.argv:
+        i = sys.argv.index("--agent")
+        if i + 1 < len(sys.argv):
+            agent = sys.argv[i + 1]
+
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
         return 0
-    if not os.path.exists(SOCK):
+    # Gemini CLI reads stdout as JSON; an empty object means "no opinion".
+    quiet = "{}" if agent == "gemini" else ""
+
+    def done():
+        if quiet:
+            print(quiet)
         return 0
 
-    msg = build_message(data)
+    if not os.path.exists(SOCK):
+        return done()
+
+    msg = build_message(agent, data)
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.settimeout(0.5)
         sock.connect(SOCK)
     except OSError:
-        return 0
+        return done()
 
     if msg["event"] != "PermissionRequest":
         # Wait for the island's "ok" so the line is read before we hang up;
@@ -166,10 +217,10 @@ def main():
             pass
         finally:
             sock.close()
-        return 0
+        return done()
 
     # Blocking request: wait for the island's verdict line.
-    msg["request"] = f"{os.getpid()}-{msg['session'][:8]}"
+    msg["request"] = f"{agent}-{os.getpid()}-{msg['session'][:8]}"
     try:
         sock.sendall((json.dumps(msg, ensure_ascii=False) + "\n").encode())
         sock.settimeout(None)
@@ -177,7 +228,7 @@ def main():
         while b"\n" not in buf:
             chunk = sock.recv(4096)
             if not chunk:
-                return 0  # island went away: fall back to the terminal dialog
+                return 0  # island went away: fall back to the terminal prompt
             buf += chunk
         reply = json.loads(buf.split(b"\n", 1)[0].decode() or "{}")
     except (OSError, ValueError):
@@ -186,21 +237,17 @@ def main():
         sock.close()
 
     verdict = reply.get("behavior")
-    if verdict == "allow":
+    if verdict in ("allow", "always"):
         decision = {"behavior": "allow"}
-    elif verdict == "always":
-        decision = {"behavior": "allow"}
-        if isinstance(data.get("permission_suggestions"), list):
+        if verdict == "always" and agent == "claude" and isinstance(data.get("permission_suggestions"), list):
             decision["updatedPermissions"] = data["permission_suggestions"]
     elif verdict == "deny":
-        decision = {
-            "behavior": "deny",
-            "message": reply.get("message") or "The user denied this from the Dynamic Island.",
-        }
-        if reply.get("interrupt"):
-            decision["interrupt"] = True
+        decision = {"behavior": "deny"}
+        # Codex rejects extra fields on PermissionRequest decisions.
+        if agent == "claude":
+            decision["message"] = reply.get("message") or "The user denied this from the Dynamic Island."
     else:
-        return 0  # "pass": let the terminal dialog decide
+        return 0  # "pass": let the terminal prompt decide
 
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": decision}}))
     return 0

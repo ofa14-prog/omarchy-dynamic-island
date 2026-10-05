@@ -9,14 +9,15 @@ import Quickshell.Services.UPower
 import "components"
 import "services"
 import "pages"
+import "components/Agents.js" as Agents
 
 // Dynamic Island for the Omarchy bar.
 //
 // One black shape, three sizes:
 //   compact  – sits in the bar; idle clock or a live activity's leading/trailing
-//   peek     – a brief wider banner (track change, Claude finished, charging…)
-//   expanded – the full card; pages for home, music, Claude, timer and shelf
-// Alerts (a Claude permission request, a finished timer) expand on their own
+//   peek     – a brief wider banner (track change, agent finished, charging…)
+//   expanded – the full card; pages for home, music, agent, timer and shelf
+// Alerts (an agent permission request, a finished timer) expand on their own
 // and hold the island open until answered.
 Item {
   id: island
@@ -43,17 +44,18 @@ Item {
     clockFormat: "ddd d MMM  HH:mm",
     language: "auto",
     locale: "",
-    priority: ["claude", "recording", "timer", "music"],
+    priority: ["agent", "recording", "timer", "music"],
     compactHeight: "auto",
     topOffset: "auto",
     expandedWidth: 500,
     color: "#000000",
     screen: "",
     peekOnTrackChange: true,
-    peekOnClaudeDone: true,
+    peekOnAgentDone: true,
     autoExpandPermission: true,
     hideOnFullscreen: true,
-    shortcuts: []
+    shortcuts: [],
+    agent: ""
   })
   property var userConfig: ({})
   function cfg(key) { return userConfig[key] !== undefined ? userConfig[key] : defaults[key] }
@@ -90,18 +92,36 @@ Item {
     }
   }
 
-  property string agentId: ""
+  // Omarchy's default agent, unless the island's own `agent` setting overrides it.
+  property string omarchyAgent: ""
+  readonly property string agentId: cfg("agent") || omarchyAgent
   FileView {
     path: island.home + "/.config/omarchy/defaults/agent"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: island.agentId = text().trim()
+    onLoaded: island.omarchyAgent = text().trim()
   }
-  readonly property string agentName: ({
-    claude: "Claude", codex: "Codex", opencode: "OpenCode", gemini: "Gemini", pi: "Pi",
-    crush: "Crush", grok: "Grok", copilot: "Copilot", "cursor-agent": "Cursor", hermes: "Hermes"
-  })[agentId] || (agentId ? agentId : I18n.t("Ajan"))
+  // The agent Omarchy launches by default shapes the agent page: its name,
+  // mark, colors and spinner. Sessions of other agents keep their own look.
+  readonly property var agent: profile(agentId)
+  readonly property string agentName: agentId ? agent.name : I18n.t("Ajan")
+  readonly property string agentProduct: agentId ? agent.product : I18n.t("Ajan")
+  readonly property color agentColor: agent.color
+  readonly property string agentLogo: logoFor(agentId || "claude")
+  // Profile with real colors (Agents.js stores them as strings).
+  function profile(id) {
+    var p = Agents.get(id || agentId || "claude")
+    var out = {}
+    for (var k in p) out[k] = p[k]
+    out.color = Qt.lighter(p.color, 1.0)
+    out.glow = Qt.lighter(p.glow, 1.0)
+    return out
+  }
+  function logoFor(id) {
+    var p = Agents.get(id)
+    return p.logo ? Qt.resolvedUrl("icons/brand/" + p.logo + ".svg") : ""
+  }
 
   readonly property var editorLabels: ({
     code: "Code", cursor: "Cursor", zed: "Zed", sublime_text: "Sublime", nvim: "Neovim",
@@ -115,7 +135,7 @@ Item {
     var list = cfg("shortcuts")
     if (list && list.length) return list
     return [
-      { action: "agent", label: agentName, image: agentId === "claude" ? Theme.claudeLogo : "", icon: "sparkles" },
+      { action: "agent", label: agentName, image: agentLogo, icon: "sparkles" },
       { action: "editor", label: editorLabels[apps.editor] || apps.editorName, image: apps.editorIcon, icon: "code" },
       { action: "browser", label: I18n.t("Tarayıcı"), image: apps.browserIcon, icon: "globe" },
       { action: "files", label: I18n.t("Dosyalar"), image: apps.filesIcon, icon: "folder" },
@@ -155,15 +175,16 @@ Item {
 
   // ================================================================ services
 
-  ClaudeBridge {
-    id: claudeSvc
+  AgentBridge {
+    id: agentsSvc
     pluginDir: island.pluginDir
+    defaultAgent: island.agentId
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {
         island.openPage("permission", "alert")
         island.bounce()
       } else {
-        island.peek("claude", I18n.t("Claude izin istiyor"), request.project + " · " + request.tool, Theme.claude, 3500)
+        island.peek("agent:" + request.agent, I18n.t("%1 izin istiyor").arg(island.profile(request.agent).name), request.project + " · " + request.tool, island.profile(request.agent).color, 3500)
       }
     }
     onPermissionResolved: (requestId, how) => {
@@ -175,11 +196,11 @@ Item {
       }
     }
     onSessionFinished: s => {
-      if (island.cfg("peekOnClaudeDone") && island.mode !== "expanded")
-        island.peek("claude", I18n.t("Claude bitirdi"), s.project + (s.lastDuration ? " · " + island.duration(s.lastDuration) : ""), Theme.claude, 2600, "claude")
+      if (island.cfg("peekOnAgentDone") !== false && island.cfg("peekOnClaudeDone") !== false && island.mode !== "expanded")
+        island.peek("agent:" + s.agent, I18n.t("%1 bitirdi").arg(island.profile(s.agent).name), s.project + (s.lastDuration ? " · " + island.duration(s.lastDuration) : ""), island.profile(s.agent).color, 2600, "agent")
     }
     onSessionNeedsInput: (s, message) => {
-      if (island.mode !== "expanded") island.peek("claude", I18n.t("Claude seni bekliyor"), s.project, Theme.claude, 3200, "claude")
+      if (island.mode !== "expanded") island.peek("agent:" + s.agent, (s.state === "notice" ? I18n.t("%1 izin istiyor") : I18n.t("%1 seni bekliyor")).arg(island.profile(s.agent).name), s.project + (s.state === "notice" && s.title ? " · " + s.title : ""), island.profile(s.agent).color, 3200, "agent")
     }
   }
 
@@ -205,7 +226,7 @@ Item {
   DefaultApps { id: appsSvc }
   RecordingService { id: recordingSvc }
 
-  readonly property alias claude: claudeSvc
+  readonly property alias agents: agentsSvc
   readonly property alias music: musicSvc
   readonly property alias timer: timerSvc
   readonly property alias shelf: shelfSvc
@@ -217,9 +238,15 @@ Item {
   readonly property bool hasBattery: battery && battery.isLaptopBattery
   readonly property real batteryPercent: hasBattery ? (battery.percentage <= 1 ? battery.percentage * 100 : battery.percentage) : 0
   property bool lastOnBattery: true
+  // Debounced: a loose cable or a dock can flap the power state.
   Connections {
     target: UPower
-    function onOnBatteryChanged() {
+    function onOnBatteryChanged() { chargeSettle.restart() }
+  }
+  Timer {
+    id: chargeSettle
+    interval: 1500
+    onTriggered: {
       if (!island.hasBattery) return
       if (!UPower.onBattery && island.lastOnBattery)
         island.peek("battery-charge", I18n.t("Şarj oluyor"), Math.round(island.batteryPercent) + "%", Theme.green, 2200)
@@ -253,28 +280,29 @@ Item {
 
   readonly property bool musicLive: music.available && (music.playing || nowMs - music.lastPlayingAt < 30000)
   readonly property var live: {
-    var order = cfg("priority")
+    // "claude" is the pre-1.1 name of the agent activity.
+    var order = (cfg("priority") || []).map(k => k === "claude" ? "agent" : k)
     var out = []
     for (var i = 0; i < order.length; i++) {
       var k = order[i]
-      if (k === "claude" && (claude.busy || recentlyFinished)) out.push(k)
+      if (k === "agent" && (agents.busy || recentlyFinished)) out.push(k)
       else if (k === "timer" && timer.active) out.push(k)
       else if (k === "music" && musicLive) out.push(k)
       else if (k === "recording" && recording.active) out.push(k)
     }
     // Activities missing from a user's custom priority still show, last.
-    var all = ["claude", "recording", "timer", "music"]
+    var all = ["agent", "recording", "timer", "music"]
     for (var j = 0; j < all.length; j++) {
       var a = all[j]
       if (out.indexOf(a) !== -1 || order.indexOf(a) !== -1) continue
-      if ((a === "claude" && (claude.busy || recentlyFinished)) || (a === "timer" && timer.active)
+      if ((a === "agent" && (agents.busy || recentlyFinished)) || (a === "timer" && timer.active)
           || (a === "music" && musicLive) || (a === "recording" && recording.active)) out.push(a)
     }
     return out
   }
-  // A finished Claude turn lingers in compact for a moment with a checkmark.
-  readonly property bool recentlyFinished: claude.focusSession !== null && claude.focusSession.state === "done"
-    && nowMs - (claude.focusSession.finishedAt || 0) < 8000
+  // A finished agent turn lingers in compact for a moment with a checkmark.
+  readonly property bool recentlyFinished: agents.focusSession !== null && agents.focusSession.state === "done"
+    && nowMs - (agents.focusSession.finishedAt || 0) < 8000
   readonly property string primary: live.indexOf(pinned) !== -1 ? pinned : (live.length ? live[0] : "idle")
   // The main pill shows `primary`; the next activity splits off to the right,
   // a third one to the left.
@@ -289,18 +317,18 @@ Item {
   property string openedBy: "pointer"  // pointer | key | alert
   property bool pointerVisited: false
   property bool dragHover: false
-  readonly property bool alertActive: claude.pending.length > 0 || timer.ringing
-  readonly property bool locked: (page === "permission" && claude.pending.length > 0) || (page === "timer" && timer.ringing) || dragHover
+  readonly property bool alertActive: agents.pending.length > 0 || timer.ringing
+  readonly property bool locked: (page === "permission" && agents.pending.length > 0) || (page === "timer" && timer.ringing) || dragHover
 
   readonly property var pages: {
     var list = ["home"]
     if (music.available) list.push("music")
-    list.push("claude", "timer", "shelf")
+    list.push("agent", "timer", "shelf")
     return list
   }
 
   function defaultPage() {
-    if (claude.pending.length > 0) return "permission"
+    if (agents.pending.length > 0) return "permission"
     if (timer.ringing) return "timer"
     return primary === "idle" || primary === "recording" ? "home" : primary
   }
@@ -319,7 +347,8 @@ Item {
 
   function openPage(name, by) {
     peekTimer.stop()
-    if (name === "permission" && claude.pending.length === 0) name = "claude"
+    if (name === "claude") name = "agent"
+    if (name === "permission" && agents.pending.length === 0) name = "agent"
     name = name || defaultPage()
     if (mode === "expanded") { setPage(name); openedBy = by || openedBy; focusScope.forceActiveFocus(); return }
     pageSlide = 0
@@ -461,7 +490,7 @@ Item {
 
   readonly property int idleW: cfg("idleClock") ? Math.max(130, Math.ceil(clockMetrics.advanceWidth) + 44) : 130
   readonly property int liveW: {
-    if (primary === "claude") return 300
+    if (primary === "agent") return 300
     if (primary === "timer") return 236
     if (primary === "music") return 268
     if (primary === "recording") return 210
@@ -532,18 +561,30 @@ Item {
     function toggle(): string { island.toggle(); return "ok" }
     function open(page: string): string { island.openPage(page || island.defaultPage(), "key"); return "ok" }
     function close(): string { island.collapse(); return "ok" }
-    function approve(): string { return island.claude.respond("", "allow") ? "ok" : "no-request" }
-    function always(): string { return island.claude.respond("", "always") ? "ok" : "no-request" }
-    function deny(): string { return island.claude.respond("", "deny") ? "ok" : "no-request" }
+    function approve(): string { return island.agents.respond("", "allow") ? "ok" : "no-request" }
+    function always(): string { return island.agents.respond("", "always") ? "ok" : "no-request" }
+    function deny(): string { return island.agents.respond("", "deny") ? "ok" : "no-request" }
     function timer(seconds: string): string { island.timer.startCountdown(Number(seconds) || 300); island.peek("timer", I18n.t("Zamanlayıcı"), island.timer.display, Theme.orange, 1600); return "ok" }
     function stopwatch(): string { island.timer.startStopwatch(); return "ok" }
     function timerStop(): string { island.timer.cancel(); return "ok" }
     function shelfAdd(path: string): string { return island.shelf.addUrls([path]) > 0 ? "ok" : "invalid" }
     function notify(title: string, subtitle: string): string { island.peek("bell", title, subtitle, Theme.fg, 3000); return "ok" }
     function shortcut(index: string): string { island.runShortcut(island.shortcuts[Number(index)]); return "ok" }
+    function events(): string {
+      var out = []
+      var log = island.agents.eventLog
+      for (var i = 0; i < log.length; i++) {
+        var e = log[i], s = island.agents.sessions[Object.keys(island.agents.sessions).filter(k => k.indexOf(e.session) === 0)[0]]
+        out.push(new Date(e.at).toISOString().substring(11, 23) + " " + e.agent + " " + e.session + " " + e.event + (e.tool ? "(" + e.tool + ")" : "") + " entry=" + e.entry + " ts=" + e.ts + " was=" + e.before)
+      }
+      return out.join("\n")
+    }
+    function sessions(): string {
+      return JSON.stringify(island.agents.sessionList.map(s => ({ id: s.id.substring(0, 8), agent: s.agent, state: island.agents.displayState(s), tool: s.tool, project: s.project, lastTs: s.lastTs })))
+    }
     function status(): string {
-      return JSON.stringify({ mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,
-        pending: claude.pending.length, sessions: claude.sessionList.length, listening: claude.listening })
+      return JSON.stringify({ agent: island.agentId, mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,
+        pending: agents.pending.length, sessions: agents.sessionList.length, listening: agents.listening })
     }
   }
 
@@ -581,19 +622,19 @@ Item {
 
       Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape) {
-          if (island.page === "permission" && claude.currentRequest) claude.respond("", "deny")
+          if (island.page === "permission" && agents.currentRequest) agents.respond("", "deny")
           else if (island.page === "timer" && timer.ringing) timer.dismissRing()
           else island.collapse()
           event.accepted = true
-        } else if (island.page === "permission" && claude.currentRequest) {
+        } else if (island.page === "permission" && agents.currentRequest) {
           if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Y) {
-            claude.respond("", "allow"); event.accepted = true
-          } else if (event.key === Qt.Key_A && claude.currentRequest.canAlways) {
-            claude.respond("", "always"); event.accepted = true
+            agents.respond("", "allow"); event.accepted = true
+          } else if (event.key === Qt.Key_A && agents.currentRequest.canAlways) {
+            agents.respond("", "always"); event.accepted = true
           } else if (event.key === Qt.Key_N) {
-            claude.respond("", "deny"); event.accepted = true
+            agents.respond("", "deny"); event.accepted = true
           } else if (event.key === Qt.Key_T) {
-            claude.focusTerminal(claude.sessions[claude.currentRequest.session]); event.accepted = true
+            agents.focusTerminal(agents.sessions[agents.currentRequest.session]); event.accepted = true
           }
         } else if (island.mode === "expanded" && (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_Tab) {
           island.cyclePage(1); event.accepted = true
@@ -613,7 +654,7 @@ Item {
         width: shape.width
         height: shape.height
         x: Math.round((parent.width - width) / 2 + island.shakeX + leanX)
-        y: island.topY + island.bounceY
+        y: Math.round(island.topY + island.bounceY)
         opacity: island.fullscreenHidden ? 0 : 1
         scale: (island.fullscreenHidden ? 0.6 : 1) * pressScale
         transformOrigin: Item.Top
@@ -652,8 +693,12 @@ Item {
           Behavior on opacity { NumberAnimation { duration: Theme.ms(260) } }
         }
 
-        ClippingRectangle {
+        // Drawn directly (no offscreen texture) so text and icons inside stay
+        // pixel-sharp at fractional scales. `clip` is a scissor rectangle:
+        // content keeps clear of the rounded corners.
+        Rectangle {
           id: shape
+          clip: true
           width: island.targetW
           height: island.targetH
           radius: island.targetR
@@ -741,7 +786,7 @@ Item {
             id: tabs
             anchors.top: parent.top
             anchors.topMargin: 12
-            anchors.horizontalCenter: parent.horizontalCenter
+            x: Math.round((parent.width - width) / 2)
             width: island.expandedW - 32
             shown: island.mode === "expanded" && island.page !== "permission"
             island: island
@@ -751,7 +796,7 @@ Item {
             id: pageStack
             anchors.top: parent.top
             anchors.topMargin: island.expandedChromeH + 4
-            anchors.horizontalCenter: parent.horizontalCenter
+            x: Math.round((parent.width - width) / 2)
             width: island.expandedW - 40
             height: currentHeight
 
@@ -759,7 +804,7 @@ Item {
             readonly property int currentHeight: {
               switch (island.page) {
                 case "music": return musicPage.implicitHeight
-                case "claude": return claudePage.implicitHeight
+                case "agent": return agentPage.implicitHeight
                 case "permission": return permissionPage.implicitHeight
                 case "timer": return timerPage.implicitHeight
                 case "shelf": return shelfPage.implicitHeight
@@ -769,7 +814,7 @@ Item {
 
             HomePage { slide: island.pageSlide; id: homePage; island: island; width: parent.width; shown: pageStack.open && island.page === "home" }
             MusicPage { slide: island.pageSlide; id: musicPage; island: island; width: parent.width; shown: pageStack.open && island.page === "music" }
-            ClaudePage { slide: island.pageSlide; id: claudePage; island: island; width: parent.width; shown: pageStack.open && island.page === "claude" }
+            AgentPage { slide: island.pageSlide; id: agentPage; island: island; width: parent.width; shown: pageStack.open && island.page === "agent" }
             PermissionPage { slide: island.pageSlide; id: permissionPage; island: island; width: parent.width; shown: pageStack.open && island.page === "permission" }
             TimerPage { slide: island.pageSlide; id: timerPage; island: island; width: parent.width; shown: pageStack.open && island.page === "timer" }
             ShelfPage { slide: island.pageSlide; id: shelfPage; island: island; width: parent.width; shown: pageStack.open && island.page === "shelf" }

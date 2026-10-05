@@ -4,6 +4,7 @@ Text {
   property bool tabular: false
   property bool strong: false
 
+  renderType: Text.NativeRendering
   textFormat: Text.PlainText
   font.family: Theme.font
   font.pixelSize: 14

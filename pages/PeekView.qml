@@ -1,12 +1,14 @@
 import QtQuick
 import "../components"
 
-// Brief banner: icon (or artwork / Claude mark) on the left, two lines of text.
+// Brief banner: icon (or artwork / an agent's mark) on the left, two lines of text.
 Page {
   id: view
 
   property var island
   readonly property var info: island.peekData
+  readonly property bool isAgent: info.icon.indexOf("agent") === 0
+  readonly property string agentLogo: isAgent ? island.logoFor(info.icon.split(":")[1] || island.agentId) : ""
 
   Accessible.role: Accessible.AlertMessage
   Accessible.name: info.title + (info.subtitle ? ", " + info.subtitle : "")
@@ -31,8 +33,8 @@ Page {
       Icon {
         anchors.centerIn: parent
         size: 20
-        name: view.info.icon === "claude" ? "" : view.info.icon
-        source: view.info.icon === "claude" ? Theme.claudeLogo : ""
+        name: view.isAgent ? (view.agentLogo ? "" : "sparkles") : view.info.icon
+        source: view.agentLogo
         color: view.info.tint
       }
     }

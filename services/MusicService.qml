@@ -67,13 +67,26 @@ Item {
   property double lastPlayingAt: 0
   onPlayingChanged: lastPlayingAt = Date.now()
 
+  // A new track is announced only once it has settled and is actually
+  // playing: browsers flip metadata while you hover video previews, change
+  // tabs or seek, and none of that is "the song changed".
   signal trackChanged()
   property string lastTrackKey: ""
+  property string announcedKey: ""
   onTrackKeyChanged: {
-    if (trackKey === lastTrackKey || title === "") return
-    var first = lastTrackKey === ""
+    if (title === "") return
+    if (lastTrackKey === "") { lastTrackKey = trackKey; announcedKey = trackKey; return }
     lastTrackKey = trackKey
-    if (!first && playing) trackChanged()
+    settle.restart()
+  }
+  Timer {
+    id: settle
+    interval: 1500
+    onTriggered: {
+      if (music.trackKey !== music.lastTrackKey || music.trackKey === music.announcedKey) return
+      music.announcedKey = music.trackKey
+      if (music.playing && music.length > 0 && music.length < 4 * 3600) music.trackChanged()
+    }
   }
 
   function togglePlaying() { if (player && player.canTogglePlaying) player.togglePlaying() }

@@ -12,13 +12,14 @@ Page {
   readonly property string kind: island.primary
   readonly property int lead: Math.round(island.compactH * 0.62)          // leading item size
   readonly property int edge: Math.round((island.compactH - lead) / 2) + 2 // inset from the end
-  readonly property var session: island.claude.focusSession
-  readonly property string claudeState: island.claude.displayState(session)
-  readonly property bool claudeWorking: claudeState === "thinking" || claudeState === "tool" || claudeState === "compacting"
+  readonly property var session: island.agents.focusSession
+  readonly property var agentProfile: island.profile(session ? session.agent : "")
+  readonly property string agentState: island.agents.displayState(session)
+  readonly property bool agentWorking: agentState === "thinking" || agentState === "tool" || agentState === "compacting"
 
-  function claudeVerb() {
+  function agentVerb() {
     var s = session
-    switch (claudeState) {
+    switch (agentState) {
       case "waiting": return I18n.t("İzin gerekiyor")
       case "input": return I18n.t("Seni bekliyor")
       case "done": return I18n.t("Bitti")
@@ -66,25 +67,26 @@ Page {
     }
   }
 
-  // ---------------------------------------------------------------- claude
+  // ---------------------------------------------------------------- agent
   Page {
     anchors.fill: parent
-    shown: view.kind === "claude"
+    shown: view.kind === "agent"
 
     Item {
-      id: claudeLead
+      id: agentLead
       x: view.edge
       width: view.lead; height: view.lead
       anchors.verticalCenter: parent.verticalCenter
-      ClaudeSpinner {
+      AgentSpinner {
+        agent: view.session ? view.session.agent : island.agentId
         anchors.centerIn: parent
         size: Math.round(view.lead * 0.82)
-        visible: view.claudeState !== "done"
-        running: view.claudeWorking
+        visible: view.agentState !== "done"
+        running: view.agentWorking
       }
       Icon {
         anchors.centerIn: parent
-        visible: view.claudeState === "done"
+        visible: view.agentState === "done"
         name: "check"
         size: Math.round(view.lead * 0.8)
         color: Theme.green
@@ -99,9 +101,9 @@ Page {
 
       // Waiting for you: a pulsing dot reads instantly in the corner of your eye.
       Rectangle {
-        visible: view.claudeState === "waiting" || view.claudeState === "input"
+        visible: view.agentState === "waiting" || view.agentState === "input"
         width: 8; height: 8; radius: 4
-        color: Theme.claude
+        color: view.agentProfile.color
         anchors.verticalCenter: parent.verticalCenter
         SequentialAnimation on opacity {
           running: parent.visible && !Theme.reduceMotion
@@ -113,15 +115,16 @@ Page {
       ShimmerText {
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, 168)
-        label: view.claudeVerb()
-        running: view.claudeWorking
+        label: view.agentVerb()
+        running: view.agentWorking
         font.pixelSize: 13
         font.weight: Font.DemiBold
-        baseColor: view.claudeState === "done" ? Theme.green : Theme.claude
+        baseColor: view.agentState === "done" ? Theme.green : view.agentProfile.color
+        glowColor: view.agentProfile.glow
       }
       Label {
         anchors.verticalCenter: parent.verticalCenter
-        visible: view.claudeWorking && view.session && view.session.turnStartedAt > 0
+        visible: view.agentWorking && view.session && view.session.turnStartedAt > 0
         font.pixelSize: 13
         tabular: true
         color: Theme.tertiary

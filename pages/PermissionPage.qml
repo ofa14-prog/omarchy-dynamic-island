@@ -1,21 +1,23 @@
 import QtQuick
 import "../components"
 
-// Claude Code is asking to use a tool. Allow, always allow, or deny — from
+// A coding agent is asking to use a tool. Allow, always allow, or deny — from
 // here or the terminal, whichever you reach first.
 Page {
   id: page
 
   property var island
-  readonly property var claude: island.claude
-  readonly property var req: claude.currentRequest
+  readonly property var agents: island.agents
+  readonly property var req: agents.currentRequest
   readonly property bool hasDetail: req && req.detail !== ""
-  readonly property bool isDiff: req && (req.tool === "Edit" || req.tool === "MultiEdit")
+  readonly property bool isDiff: req && ["Edit", "MultiEdit", "replace", "edit", "apply_patch"].indexOf(req.tool) !== -1
+  readonly property var profile: island.profile(req ? req.agent : "")
+  readonly property string logo: island.logoFor(req ? req.agent : "")
 
   implicitHeight: col.implicitHeight + 14
 
   Accessible.role: Accessible.AlertMessage
-  Accessible.name: req ? I18n.t("Claude izin istiyor: ") + req.tool + " " + req.title : ""
+  Accessible.name: req ? I18n.t("%1 izin istiyor").arg(profile.name) + ": " + req.tool + " " + req.title : ""
 
   // Keep the decisive button under the keyboard once the island has focus.
   onShownChanged: if (shown) allowButton.forceActiveFocus()
@@ -35,8 +37,8 @@ Page {
         id: badge
         width: 42; height: 42; radius: 21
         anchors.verticalCenter: parent.verticalCenter
-        color: Qt.rgba(0.85, 0.47, 0.34, 0.18)
-        Icon { anchors.centerIn: parent; source: Theme.claudeLogo; size: 24 }
+        color: Qt.rgba(page.profile.color.r, page.profile.color.g, page.profile.color.b, 0.18)
+        Icon { anchors.centerIn: parent; source: page.logo; name: page.logo ? "" : "sparkles"; color: page.profile.color; size: 24 }
       }
       Column {
         anchors.left: badge.right
@@ -47,7 +49,7 @@ Page {
         spacing: 0
         Label {
           width: parent.width
-          text: I18n.t("Claude izin istiyor")
+          text: I18n.t("%1 izin istiyor").arg(page.profile.name)
           font.pixelSize: 16
           strong: true
         }
@@ -62,8 +64,8 @@ Page {
         id: counter
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        visible: claude.pending.length > 1
-        text: "1 / " + claude.pending.length
+        visible: agents.pending.length > 1
+        text: "1 / " + agents.pending.length
         font.pixelSize: 12
         tabular: true
         color: Theme.tertiary
@@ -92,14 +94,14 @@ Page {
             height: 24
             width: chipLabel.implicitWidth + 16
             radius: 12
-            color: Qt.rgba(0.85, 0.47, 0.34, 0.25)
+            color: Qt.rgba(page.profile.color.r, page.profile.color.g, page.profile.color.b, 0.25)
             Label {
               id: chipLabel
               anchors.centerIn: parent
               text: page.req ? page.req.tool : ""
               font.pixelSize: 12
               strong: true
-              color: Theme.claude
+              color: page.profile.color
             }
           }
           Label {
@@ -116,6 +118,7 @@ Page {
           visible: page.hasDetail
           width: parent.width
           textFormat: Text.RichText
+          renderType: Text.NativeRendering
           wrapMode: Text.WrapAnywhere
           maximumLineCount: 7
           elide: Text.ElideRight
@@ -156,7 +159,7 @@ Page {
         accessibleName: I18n.t("Reddet")
         hint: I18n.t("Esc veya N")
         KeyNavigation.right: page.req && page.req.canAlways ? alwaysButton : allowButton
-        onClicked: { claude.respond(page.req.id, "deny"); island.shake() }
+        onClicked: { agents.respond(page.req.id, "deny"); island.shake() }
       }
       IslandButton {
         id: alwaysButton
@@ -169,7 +172,7 @@ Page {
         hint: "A"
         KeyNavigation.left: denyButton
         KeyNavigation.right: allowButton
-        onClicked: claude.respond(page.req.id, "always")
+        onClicked: agents.respond(page.req.id, "always")
       }
       IslandButton {
         id: allowButton
@@ -182,7 +185,7 @@ Page {
         accessibleName: I18n.t("İzin ver")
         hint: I18n.t("Enter veya Y")
         KeyNavigation.left: page.req && page.req.canAlways ? alwaysButton : denyButton
-        onClicked: claude.respond(page.req.id, "allow")
+        onClicked: agents.respond(page.req.id, "allow")
       }
     }
 
@@ -223,7 +226,7 @@ Page {
         anchors.margins: -4
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: page.req && claude.focusTerminal(claude.sessions[page.req.session])
+        onClicked: page.req && agents.focusTerminal(agents.sessions[page.req.session])
         Accessible.role: Accessible.Link
         Accessible.name: I18n.t("Terminale git")
       }

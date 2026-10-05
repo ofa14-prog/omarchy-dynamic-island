@@ -12,7 +12,7 @@ Page {
     id: gauge
     property real value: 0
     property string caption: ""
-    property color tone: Theme.claude
+    property color tone: island.agentColor
     spacing: 4
     Item {
       width: 40; height: 40
@@ -76,16 +76,16 @@ Page {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 16
         Gauge {
-          visible: island.claude.usage.session >= 0
-          value: island.claude.usage.session
+          visible: island.agents.usage.session >= 0
+          value: island.agents.usage.session
           caption: I18n.t("5 sa")
-          tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : Theme.claude
+          tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : island.agentColor
         }
         Gauge {
-          visible: island.claude.usage.weekly >= 0
-          value: island.claude.usage.weekly
+          visible: island.agents.usage.weekly >= 0
+          value: island.agents.usage.weekly
           caption: I18n.t("Hafta")
-          tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : Theme.claude
+          tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : island.agentColor
         }
         Gauge {
           visible: island.hasBattery

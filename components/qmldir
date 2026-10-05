@@ -1,7 +1,7 @@
 module components
 singleton Theme 1.0 Theme.qml
 IslandButton 1.0 IslandButton.qml
-ClaudeSpinner 1.0 ClaudeSpinner.qml
+AgentSpinner 1.0 AgentSpinner.qml
 Equalizer 1.0 Equalizer.qml
 ProgressRing 1.0 ProgressRing.qml
 Page 1.0 Page.qml

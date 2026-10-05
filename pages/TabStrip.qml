@@ -13,11 +13,11 @@ Page {
   readonly property var meta: ({
     home:   { icon: "home",   name: I18n.t("Ana") },
     music:  { icon: "music",  name: I18n.t("Müzik") },
-    claude: { icon: "",       name: "Claude" },
+    agent:  { icon: island.agentLogo ? "" : "sparkles", name: island.agentName },
     timer:  { icon: "timer",  name: I18n.t("Sayaç") },
     shelf:  { icon: "shelf",  name: I18n.t("Raf") }
   })
-  readonly property var names: ({ home: I18n.t("Ana sayfa"), music: I18n.t("Müzik"), claude: "Claude Code", timer: I18n.t("Zamanlayıcı"), shelf: I18n.t("Raf") })
+  readonly property var names: ({ home: I18n.t("Ana sayfa"), music: I18n.t("Müzik"), agent: island.agentProduct, timer: I18n.t("Zamanlayıcı"), shelf: I18n.t("Raf") })
 
   readonly property int closeSize: 36
   readonly property real segment: (width - closeSize - 8) / Math.max(1, island.pages.length)
@@ -90,7 +90,7 @@ Page {
           anchors.verticalCenter: parent.verticalCenter
           size: 18
           name: tab.info.icon
-          source: tab.key === "claude" ? Theme.claudeLogo : ""
+          source: tab.key === "agent" ? island.agentLogo : ""
           color: tab.current ? Theme.fg : Theme.secondary
         }
         Label {
@@ -107,13 +107,13 @@ Page {
 
       // Badges: pending permissions, shelf count.
       Rectangle {
-        readonly property int n: tab.key === "claude" ? island.claude.pending.length : tab.key === "shelf" ? island.shelf.count : 0
+        readonly property int n: tab.key === "agent" ? island.agents.pending.length : tab.key === "shelf" ? island.shelf.count : 0
         visible: n > 0 && !tab.current
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.rightMargin: 4
         width: Math.max(16, badgeText.implicitWidth + 8); height: 16; radius: 8
-        color: tab.key === "claude" ? Theme.claude : Theme.blue
+        color: tab.key === "agent" ? island.agentColor : Theme.blue
         Label { id: badgeText; anchors.centerIn: parent; text: parent.n; font.pixelSize: 10; strong: true; horizontalAlignment: Text.AlignHCenter }
       }
 

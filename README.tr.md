@@ -4,8 +4,8 @@
 
 [Omarchy](https://omarchy.org) bar'ının ortasında Apple tarzı bir Dynamic Island. Gerçeği gibi yay
 fiziğiyle açılan, baloncuklara bölünen ve titreyen tek bir siyah şekil: müzik, sayaç, ekran kaydı,
-dosya rafı, kısayollar ve **Claude Code** oturumlarınız. Araç izinlerini doğrudan adadan
-onaylayabilir ya da reddedebilirsiniz.
+dosya rafı, kısayollar ve **kodlama ajanı** oturumlarınız (Claude Code, Codex, OpenCode,
+Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsiniz.
 
 ![Dynamic Island](preview.png)
 
@@ -23,13 +23,28 @@ onaylayabilir ya da reddedebilirsiniz.
   ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi uygulama ikonlarıyla
   kısayollar; hızlı zamanlayıcılar.
 - **Müzik**: tüm MPRIS oynatıcılar; kapak, sürüklenebilir ilerleme çubuğu, kontroller. Dalga formu kapak renginde.
-- **Claude Code**: tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
-- **İzinler**: araç, dosya/komut, renkli diff; **İzin ver / Her zaman / Reddet**. Ada, Claude'un terminal
+- **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
+  spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
+- **İzinler**: araç, dosya/komut, renkli diff; **İzin ver / Her zaman / Reddet**. Ada, ajanın terminal
   sorusuyla yarışır: hangisinden cevap verirseniz diğeri kapanır.
 - **Sayaç**: geri sayım (+1 dk, duraklat, tekrarla) ve kronometre; süre dolunca ses.
 - **Ekran kaydı**: Omarchy kaydı kırmızı kayıt etkinliği olarak görünür; tıklayınca durur.
 - **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin.
-- Claude'un kendi spinner'ı (`· ✢ * ✶ ✻ ✽`) ve durum parlaması, canlı bir `claude` oturumundan alındı.
+- Claude Code'un kendi spinner'ı (`· ✢ * ✶ ✻ ✽`) ve durum parlaması canlı bir `claude` oturumundan
+  alındı; diğer ajanlar kendi CLI'larının braille spinner'ını kullanır.
+- Kesirli ölçekte keskin: yazılar piksele hizalı, ikonlar ekranın gerçek piksel yoğunluğunda çizilir.
+
+### Ajanlar
+
+| Varsayılan ajan | Canlı oturum | Adadan izin |
+|---|---|---|
+| Claude Code | var | İzin ver · Her zaman · Reddet |
+| Codex | var | İzin ver · Reddet |
+| OpenCode | var | İzin ver · Her zaman · Reddet |
+| Gemini CLI | var | Gösterilir, terminalde yanıtlanır (Gemini hook'ları yanıt veremez) |
+| Pi, Oh My Pi, Grok, Crush, Cursor, Copilot, Hermes, OpenClaw, Muse | — | — (olay API'si yok; marka, başlatma ve kullanım) |
+
+Arka plan çalıştırmaları (`claude -p`, SDK betikleri) oturum ya da uyarı olarak görünmez.
 - Türkçe ve İngilizce arayüz; Omarchy sistem fontunu kullanır.
 
 ### Etkileşim
@@ -52,7 +67,7 @@ Klavye (ada odaktayken): `Esc` kapat/reddet · `Enter`/`Y` izin ver · `A` her z
 
 - Omarchy 4 (Quickshell tabanlı `omarchy-shell`) ve Hyprland
 - Omarchy'de zaten var: `python3`, `jq`, `pw-play`, `notify-send`, `wl-copy`, `xdg-open`
-- İsteğe bağlı: Claude özellikleri için [Claude Code](https://claude.com/claude-code)
+- İsteğe bağlı: yukarıdaki ajanlardan herhangi biri
 
 ## Kurulum
 
@@ -68,15 +83,17 @@ Bar'ın ortasında yer açın (ortadaki widget'ları sağa taşır, geri alınab
 # geri al: …/bin/dynamic-island-bar-setup --undo
 ```
 
-Claude Code'u bağlayın: adanın Claude sayfasındaki **Bağla** düğmesiyle ya da:
+Ajanlarınızı bağlayın: adanın ajan sayfasındaki **Bağla** düğmesiyle (varsayılan ajan için) ya da:
 
 ```sh
-~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-claude-setup
+~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-agent-setup claude codex
+# seçenekler: claude codex gemini opencode all · --remove … · --status
 ```
 
-`~/.claude/settings.json` dosyasını (veya `$CLAUDE_CONFIG_DIR`) yedekleyip hook'ları ekler;
-`--remove` yalnızca bunları kaldırır. Durum olayları `async` çalışır, Claude'u yavaşlatmaz. Ada
-çalışmıyorsa hook hiçbir şey yazmaz ve Claude normal davranır.
+Claude Code `~/.claude/settings.json`, Codex `~/.codex/hooks.json`, Gemini CLI `~/.gemini/settings.json`
+dosyasına hook ekler; OpenCode için `~/.config/opencode/plugins/` altına eklenti bağlantısı koyar.
+Her dosya önce yedeklenir, yalnızca adanın kendi girdileri eklenir/kaldırılır. Ada çalışmıyorsa
+hook'lar hiçbir şey yazmaz ve ajan normal davranır.
 
 İsteğe bağlı kısayollar, `~/.config/hypr/bindings.lua` içine:
 
@@ -93,7 +110,7 @@ o.bind("SUPER + ALT + T", "Dynamic Island: sayaç", "omarchy-shell -q dynamicisl
 için [İngilizce README'deki tabloya](README.md#settings) bakın. Örnek:
 
 ```json
-{ "language": "tr", "reduceMotion": false, "hoverDelay": 380 }
+{ "language": "tr", "agent": "", "reduceMotion": false, "hoverDelay": 380 }
 ```
 
 ## IPC
@@ -104,13 +121,13 @@ omarchy-shell dynamicisland approve | always | deny
 omarchy-shell dynamicisland timer 300 | stopwatch | timerStop
 omarchy-shell dynamicisland shelfAdd /dosya/yolu
 omarchy-shell dynamicisland notify "Başlık" "Alt satır"
-omarchy-shell dynamicisland status
+omarchy-shell dynamicisland status | sessions | events
 ```
 
 ## Kaldırma
 
 ```sh
-~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-claude-setup --remove
+~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-agent-setup --remove all
 ~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-bar-setup --undo
 omarchy plugin remove io.github.ofa14-prog.dynamic-island
 ```
@@ -118,7 +135,7 @@ omarchy plugin remove io.github.ofa14-prog.dynamic-island
 ## Teşekkür
 
 Arayüz ikonları [Reicon](https://github.com/dqev/reicon)'dan (MIT; temel ikonlar Solar Icons,
-CC BY 4.0). Claude logosu Simple Icons üzerinden; Claude, Anthropic'in ticari markasıdır ve bu proje
-Anthropic ile bağlantılı değildir. Ayrıntılar: [icons/NOTICE.md](icons/NOTICE.md).
+CC BY 4.0). Ajan logoları (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) Simple Icons
+üzerinden; sahiplerinin ticari markalarıdır ve bu proje hiçbiriyle bağlantılı değildir. Ayrıntılar: [icons/NOTICE.md](icons/NOTICE.md).
 
 MIT Lisansı, bkz. [LICENSE](LICENSE).

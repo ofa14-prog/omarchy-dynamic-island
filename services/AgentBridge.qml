@@ -2,17 +2,20 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Live model of every Claude Code session on the machine, fed by
-// bin/dynamic-island-hook over a unix socket. Permission requests keep their
-// socket open; answering writes the verdict back down that same socket.
+// Live model of every coding-agent session on the machine (Claude Code,
+// Codex, Gemini CLI via bin/dynamic-island-hook; OpenCode via its plugin),
+// fed over a unix socket. Permission requests keep their connection open;
+// answering writes the verdict back down that same connection.
 Item {
   id: bridge
 
   property string pluginDir: ""
   readonly property string runtimeDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/dynamic-island"
-  readonly property string socketPath: runtimeDir + "/claude.sock"
+  readonly property string socketPath: runtimeDir + "/agents.sock"
   readonly property string home: Quickshell.env("HOME") || ""
-  readonly property string usagePath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/claude.json"
+  property string defaultAgent: ""   // Omarchy's default agent id
+  // Usage records written by Omarchy's agents panel (claude.json, codex.json…).
+  readonly property string usagePath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/" + (defaultAgent || "claude") + ".json"
 
   property var sessions: ({})
   property var sessionList: []
@@ -38,7 +41,7 @@ Item {
   signal sessionNeedsInput(var session, string message)
 
   function isBusy(s) {
-    return s && (s.state === "thinking" || s.state === "tool" || s.state === "compacting" || hasPending(s.id))
+    return s && (s.state === "thinking" || s.state === "tool" || s.state === "compacting" || s.state === "notice" || hasPending(s.id))
   }
 
   function hasPending(sessionId) {
@@ -46,9 +49,11 @@ Item {
     return false
   }
 
+  // "notice" is a permission prompt the agent cannot hand over (Gemini CLI):
+  // shown as waiting, answered in the terminal.
   function displayState(s) {
     if (!s) return "ready"
-    return hasPending(s.id) ? "waiting" : s.state
+    return hasPending(s.id) || s.state === "notice" ? "waiting" : s.state
   }
 
   // ---------------------------------------------------------------- socket
@@ -73,7 +78,7 @@ Item {
         onRead: line => bridge.receive(line, connection)
       }
       onConnectedChanged: {
-        // Hook killed (you answered in the terminal) or Claude gave up.
+        // Hook killed (you answered in the terminal) or the agent gave up.
         if (!connected && requestId !== "") bridge.dropRequest(requestId, "elsewhere")
       }
     }
@@ -83,22 +88,33 @@ Item {
 
   function now() { return Date.now() }
 
+  // Last events received, for `omarchy-shell dynamicisland events` when
+  // something looks wrong. Kept small and in memory only.
+  property var eventLog: []
+  function logEvent(msg) {
+    var s = sessions[msg.session]
+    var entry = { at: now(), ts: msg.ts || 0, event: msg.event, session: (msg.session || "").substring(0, 8),
+      agent: msg.agent || "", tool: msg.tool || "", entry: msg.entry || "", before: s ? s.state : "" }
+    eventLog = eventLog.concat([entry]).slice(-60)
+  }
+
   function sessionFor(msg) {
     var id = msg.session || "unknown"
     var s = sessions[id]
     if (!s) {
       s = {
-        id: id, state: "ready", project: msg.project || "", cwd: msg.cwd || "",
+        id: id, agent: msg.agent || "", state: "ready", project: msg.project || "", cwd: msg.cwd || "",
         tool: "", title: "", detail: "", prompt: "", message: "",
         turnStartedAt: 0, updatedAt: now(), createdAt: now(), toolCount: 0,
-        pids: [], claudePid: 0, mode: ""
+        pids: [], agentPid: 0, mode: ""
       }
     }
     if (msg.project) s.project = msg.project
     if (msg.cwd) s.cwd = msg.cwd
     if (msg.pids && msg.pids.length) s.pids = msg.pids
-    if (msg.claudePid) s.claudePid = msg.claudePid
+    if (msg.agentPid) s.agentPid = msg.agentPid
     if (msg.mode) s.mode = msg.mode
+    if (msg.entry) s.entry = msg.entry
     s.updatedAt = now()
     return s
   }
@@ -121,12 +137,23 @@ Item {
   function receive(line, socket) {
     var msg
     try { msg = JSON.parse(line) } catch (e) { return }
-    if (!msg || msg.agent !== "claude") return
+    if (!msg || !msg.agent || !msg.event) return
     // Acknowledge fire-and-forget events so the hook hangs up only after we
     // have the line. Permission requests are answered with the verdict later.
     if (msg.event !== "PermissionRequest") { socket.write("ok\n"); socket.flush() }
+    logEvent(msg)
+
+    // Headless runs (`claude -p`, `codex exec`, SDK scripts) are not sessions
+    // you are watching: no list entry, no "done" banners. A permission
+    // request still gets through, since something is actually waiting on it.
+    if (String(msg.entry || "").indexOf("sdk") === 0 && msg.event !== "PermissionRequest") return
 
     var ev = msg.event
+    if (ev === "PermissionResolved") {
+      // Answered in the agent itself (OpenCode reports it explicitly).
+      dropRequest(msg.request, "elsewhere")
+      return
+    }
     if (ev === "SessionEnd") {
       removeSession(msg.session)
       return
@@ -143,7 +170,10 @@ Item {
       if (ts) s.lastTs = ts
     }
     if (ev === "SessionStart") {
-      if (s.state !== "thinking" && s.state !== "tool") s.state = "ready"
+      // `compact` fires mid-turn after an automatic compaction: Claude is
+      // still working, so the state must not fall back to "ready".
+      if (msg.source !== "compact" && s.state !== "thinking" && s.state !== "tool" && s.state !== "compacting") s.state = "ready"
+      else if (msg.source === "compact" && s.state === "compacting") s.state = "thinking"
     } else if (ev === "UserPromptSubmit") {
       s.state = "thinking"
       s.prompt = msg.prompt || ""
@@ -158,14 +188,26 @@ Item {
       s.toolCount += 1
       if (!s.turnStartedAt) s.turnStartedAt = now()
     } else if (ev === "PostToolUse") {
-      if (s.state === "tool") s.state = "thinking"
+      if (s.state === "tool" || s.state === "notice") s.state = "thinking"
+    } else if (ev === "PermissionNotice") {
+      s.state = "notice"
+      s.tool = msg.tool || s.tool
+      s.title = msg.title || s.title
+      s.message = msg.message || ""
+      commit(s)
+      sessionNeedsInput(s, s.message)
+      return
     } else if (ev === "PreCompact") {
       s.state = "compacting"
     } else if (ev === "Notification") {
       s.message = msg.message || ""
-      // Permission prompts arrive as their own PermissionRequest event.
-      if (msg.kind !== "permission_prompt" && !hasPending(s.id)) {
-        if (s.state !== "thinking" && s.state !== "tool") s.state = "input"
+      // Only "Claude is waiting for you" kinds deserve attention; permission
+      // prompts arrive as their own PermissionRequest, and the rest
+      // (auth_success, …) are not about you at all.
+      var wantsYou = msg.kind === "idle_prompt" || msg.kind === "elicitation_dialog"
+        || (msg.kind === "" && /waiting for your input/i.test(msg.message || ""))
+      if (wantsYou && !hasPending(s.id) && s.state !== "thinking" && s.state !== "tool") {
+        s.state = "input"
         commit(s)
         sessionNeedsInput(s, s.message)
         return
@@ -183,6 +225,7 @@ Item {
       s.detail = msg.detail || ""
       var request = {
         id: msg.request || ("req-" + now()),
+        agent: s.agent,
         session: s.id,
         project: s.project,
         cwd: s.cwd,
@@ -274,7 +317,7 @@ Item {
 
   // ---------------------------------------------------------------- liveness
 
-  // A session whose claude process is gone (terminal closed, crash) never
+  // A session whose agent process is gone (terminal closed, crash) never
   // sends SessionEnd. Sweep them out.
   Process {
     id: livenessCheck
@@ -284,7 +327,7 @@ Item {
         var dead = text.split("\n").filter(l => l !== "")
         for (var i = 0; i < livenessCheck.checked.length; i++) {
           var s = livenessCheck.checked[i]
-          if (dead.indexOf(String(s.claudePid)) !== -1) bridge.removeSession(s.id)
+          if (dead.indexOf(String(s.agentPid)) !== -1) bridge.removeSession(s.id)
         }
       }
     }
@@ -297,27 +340,42 @@ Item {
     onTriggered: {
       var stale = Date.now() - 6 * 3600 * 1000
       bridge.sessionList.filter(s => s.updatedAt < stale && !bridge.isBusy(s)).forEach(s => bridge.removeSession(s.id))
-      var withPid = bridge.sessionList.filter(s => s.claudePid > 0)
+      var withPid = bridge.sessionList.filter(s => s.agentPid > 0)
       if (withPid.length === 0 || livenessCheck.running) return
       livenessCheck.checked = withPid
-      livenessCheck.command = ["sh", "-c", "for p; do [ -d /proc/$p ] || echo $p; done", "sh"].concat(withPid.map(s => String(s.claudePid)))
+      livenessCheck.command = ["sh", "-c", "for p; do [ -d /proc/$p ] || echo $p; done", "sh"].concat(withPid.map(s => String(s.agentPid)))
       livenessCheck.running = true
     }
   }
 
   // ---------------------------------------------------------------- setup
 
-  property bool hooksInstalled: false
-  FileView {
-    path: (Quickshell.env("CLAUDE_CONFIG_DIR") || bridge.home + "/.claude") + "/settings.json"
-    watchChanges: true
-    printErrors: false
-    onFileChanged: reload()
-    onLoaded: bridge.hooksInstalled = text().indexOf("dynamic-island-hook") !== -1
+  // Which agents are wired to the island: { claude: true, codex: false, … }.
+  property var installed: ({})
+  readonly property bool hooksInstalled: installed[defaultAgent] === true
+  Process {
+    id: statusProbe
+    command: [bridge.pluginDir + "/bin/dynamic-island-agent-setup", "--status"]
+    running: bridge.pluginDir !== ""
+    stdout: StdioCollector {
+      onStreamFinished: { try { bridge.installed = JSON.parse(text) } catch (e) {} }
+    }
   }
+  Timer {
+    interval: 30000
+    repeat: true
+    running: true
+    onTriggered: bridge.refreshInstalled()
+  }
+  function refreshInstalled() { if (!statusProbe.running) statusProbe.running = true }
 
-  function installHooks() {
-    Quickshell.execDetached([pluginDir + "/bin/dynamic-island-claude-setup"])
+  function installHooks(agent) {
+    installer.command = [pluginDir + "/bin/dynamic-island-agent-setup", agent || defaultAgent || "claude"]
+    installer.running = true
+  }
+  Process {
+    id: installer
+    onExited: bridge.refreshInstalled()
   }
 
   function openUsage() {
@@ -330,6 +388,8 @@ Item {
     path: bridge.usagePath
     watchChanges: true
     printErrors: false
+    onPathChanged: bridge.usage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+    onLoadFailed: bridge.usage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
     onFileChanged: reload()
     onLoaded: {
       try {

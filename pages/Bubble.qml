@@ -49,9 +49,9 @@ Item {
       case "music": return (i.music.title || I18n.t("Müzik")) + (i.music.artist ? " — " + i.music.artist : "")
       case "timer": return (i.timer.mode === "stopwatch" ? I18n.t("Kronometre ") : I18n.t("Sayaç ")) + i.timer.display + (i.timer.paused ? I18n.t(" (duraklatıldı)") : "")
       case "recording": return I18n.t("Ekran kaydı ") + i.duration(i.nowMs - i.recording.startedAt) + I18n.t(" · durdurmak için tıkla")
-      case "claude": {
-        var s = i.claude.focusSession
-        return "Claude" + (s && s.project ? " · " + s.project : "") + (i.claude.pending.length ? I18n.t(" · izin bekliyor") : "")
+      case "agent": {
+        var s = i.agents.focusSession
+        return i.profile(s ? s.agent : "").name + (s && s.project ? " · " + s.project : "") + (i.agents.pending.length ? I18n.t(" · izin bekliyor") : "")
       }
     }
     return ""
@@ -63,7 +63,7 @@ Item {
       island.peek("record", I18n.t("Kayıt durduruluyor"), "", Theme.red, 1500)
       return
     }
-    island.openPage(kind === "claude" && island.claude.pending.length ? "permission" : kind, "pointer")
+    island.openPage(kind === "agent" && island.agents.pending.length ? "permission" : kind, "pointer")
   }
 
   Rectangle {
@@ -110,18 +110,19 @@ Item {
         color: Theme.orange
       }
     }
-    ClaudeSpinner {
-      visible: bubble.kind === "claude"
+    AgentSpinner {
+      agent: island.agents.focusSession ? island.agents.focusSession.agent : island.agentId
+      visible: bubble.kind === "agent"
       anchors.centerIn: parent
       size: Math.round(bubble.width * 0.5)
-      running: island.claude.busy && island.claude.pending.length === 0
+      running: island.agents.busy && island.agents.pending.length === 0
     }
     Rectangle {
-      visible: bubble.kind === "claude" && island.claude.pending.length > 0
+      visible: bubble.kind === "agent" && island.agents.pending.length > 0
       anchors.right: parent.right
       anchors.top: parent.top
       width: 9; height: 9; radius: 5
-      color: Theme.claude
+      color: island.agentColor
     }
     Rectangle {
       visible: bubble.kind === "recording"
