@@ -6,6 +6,83 @@ import Quickshell.Io
 // Codex, Gemini CLI via bin/dynamic-island-hook; OpenCode via its plugin),
 // fed over a unix socket. Permission requests keep their connection open;
 // answering writes the verdict back down that same connection.
+//
+// ════════════════════════════════════════════════════════════════ STATES
+//
+//   ready        session open, no turn running (fresh start, /clear, resume,
+//                after a manual /compact). Shown as "Idle".
+//   thinking     a turn is running and the model is working
+//   tool         a turn is running a tool (s.tool says which)
+//   compacting   the context is being compacted
+//   waiting      (derived) a permission request is open on the island
+//   notice       the agent asked for permission in its own terminal and
+//                cannot hand it to the island (Gemini CLI)
+//   input        the agent is waiting for you: a question, an MCP
+//                elicitation, or "waiting for your input" after a while
+//   done         the turn finished normally
+//   interrupted  you stopped the turn (Esc, or rejected a permission in
+//                the terminal)
+//   error        the turn ended on an API error
+//   quiet        a turn looked busy but showed no sign of life for
+//                quietAfterMs: probably stopped in a way no agent reports
+//
+//   Busy (spinner, live activity): thinking, tool, compacting, waiting, notice
+//   Needs you (live activity, pulsing dot): waiting, notice, input
+//
+// ══════════════════════════════════════════════════════════════ TRIGGERS
+//
+//   event                 sent by                 effect
+//   ──────────────────────────────────────────────────────────────────────
+//   SessionStart          Claude, Codex, Gemini,  new session → ready.
+//                         OpenCode                source "compact": stays as the
+//                                                 compaction left it (see below)
+//   UserPromptSubmit      all                     → thinking; starts the turn clock
+//   PreToolUse            all                     → tool (s.tool, title, detail)
+//   PostToolUse           all                     tool | notice | input → thinking
+//   PostToolUseFailure    Claude                  is_interrupt → interrupted,
+//                                                 else → thinking (tool failed)
+//   PermissionRequest     Claude, Codex,          opens an island request
+//                         OpenCode                (→ waiting). Answered here, or
+//                                                 the connection closes when you
+//                                                 answer in the terminal
+//   PermissionResolved    OpenCode                closes the island request
+//   PermissionDenied      Claude (auto mode)      → thinking (Claude carries on)
+//   PermissionNotice      Gemini                  → notice (answer in terminal)
+//   Question              Claude                  → input with the question text
+//                         (AskUserQuestion)
+//   Notification          Claude, Gemini          idle_prompt / elicitation_dialog
+//                                                 → input + banner; others ignored
+//   Elicitation           Claude                  → input + banner
+//   PreCompact            Claude, Codex, Gemini   → compacting (remembers trigger)
+//   PostCompact           Claude, Codex           manual → ready, auto → thinking
+//   Stop                  all                     → done + "finished" banner
+//   StopFailure           Claude                  → error + banner
+//   Interrupt             Codex                   → interrupted
+//   SessionEnd            all                     session removed
+//
+//   Signals the agents never send, and how they are recovered:
+//
+//   Permission allowed in     Claude Code leaves the hook running. The request
+//   the terminal              is settled by the next event that proves it was
+//                             answered (PostToolUse/Failure of that tool, Stop,
+//                             StopFailure, a new prompt) and the hook is told
+//                             to step aside ("pass")
+//   Esc while Claude writes   no event; Claude appends "[Request interrupted by
+//                             user]" to the transcript → transcript watch
+//                             → interrupted
+//   Permission rejected in    the hook's connection closes and the transcript
+//   the terminal              gets "[Request interrupted by user for tool use]"
+//                             → interrupted (allowed: PostToolUse follows)
+//   Esc before any output     nothing at all; after quietAfterMs without an
+//                             event or transcript write → quiet
+//   Terminal closed / crash   the agent process is gone → session removed
+//
+//   Ordering: hooks run as separate processes, so events can arrive out of
+//   order. Each carries a microsecond timestamp; an older turn event never
+//   rewinds a newer one (s.lastTs).
+//
+//   Headless runs (`claude -p`, SDK scripts) are ignored except for their
+//   permission requests, which something is actually waiting on.
 Item {
   id: bridge
 
@@ -17,6 +94,16 @@ Item {
   // Usage records written by Omarchy's agents panel (claude.json, codex.json…).
   readonly property string usagePath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/" + (defaultAgent || "claude") + ".json"
 
+  // A busy turn with no event and no transcript write for this long is shown
+  // as "quiet". Long enough for a slow model to think without tools.
+  property int quietAfterMs: 180000
+
+  // Session objects are mutated in place, which QML cannot see. Every change
+  // bumps `revision`, and every helper that reads a session's state touches
+  // it, so bindings that call them (labels, spinners, the live activity)
+  // re-evaluate on each event instead of keeping a stale state.
+  property int revision: 0
+
   property var sessions: ({})
   property var sessionList: []
   property var pending: []          // oldest first
@@ -26,11 +113,16 @@ Item {
   readonly property bool listening: server.active
   readonly property var currentRequest: pending.length > 0 ? pending[0] : null
   readonly property var busySessions: sessionList.filter(s => isBusy(s))
+  readonly property var attentionSessions: sessionList.filter(s => needsYou(s))
   readonly property bool busy: busySessions.length > 0 || pending.length > 0
-  // The session the compact island narrates: whoever needs you, else the most
-  // recently active busy session, else the most recent one at all.
+  // The agent is a live activity while something runs or something needs you.
+  readonly property bool live: busy || attentionSessions.length > 0
+  // The session the compact island narrates: an open request first, then
+  // whoever needs you, then the most recently active busy session, then the
+  // most recent session at all.
   readonly property var focusSession: {
     if (currentRequest) return sessions[currentRequest.session] || null
+    if (attentionSessions.length > 0) return attentionSessions[0]
     if (busySessions.length > 0) return busySessions[0]
     return sessionList.length > 0 ? sessionList[0] : null
   }
@@ -38,10 +130,19 @@ Item {
   signal permissionArrived(var request)
   signal permissionResolved(string requestId, string how)
   signal sessionFinished(var session)
+  signal sessionFailed(var session)
   signal sessionNeedsInput(var session, string message)
 
+  readonly property var busyStates: ["thinking", "tool", "compacting", "notice"]
+
   function isBusy(s) {
-    return s && (s.state === "thinking" || s.state === "tool" || s.state === "compacting" || s.state === "notice" || hasPending(s.id))
+    void revision
+    return !!s && (busyStates.indexOf(s.state) !== -1 || hasPending(s.id))
+  }
+
+  function needsYou(s) {
+    void revision
+    return !!s && (s.state === "input" || s.state === "notice" || hasPending(s.id))
   }
 
   function hasPending(sessionId) {
@@ -49,9 +150,25 @@ Item {
     return false
   }
 
-  // "notice" is a permission prompt the agent cannot hand over (Gemini CLI):
-  // shown as waiting, answered in the terminal.
+  // How each state looks, for every view: label key (I18n), whether the
+  // spinner runs, the end-of-turn icon, and its tone.
+  readonly property var stateLook: ({
+    ready:       { label: "Boşta",                     spin: false, icon: "",      tone: "dim" },
+    thinking:    { label: "Düşünüyor…",                spin: true,  icon: "",      tone: "agent" },
+    tool:        { label: "",                          spin: true,  icon: "",      tone: "agent" },
+    compacting:  { label: "Sıkıştırıyor…",             spin: true,  icon: "",      tone: "agent" },
+    waiting:     { label: "İzin gerekiyor",            spin: false, icon: "",      tone: "agent" },
+    input:       { label: "Seni bekliyor",             spin: false, icon: "",      tone: "agent" },
+    done:        { label: "Bitti",                     spin: false, icon: "check", tone: "green" },
+    interrupted: { label: "Durduruldu",                spin: false, icon: "x",     tone: "dim" },
+    error:       { label: "Hata",                      spin: false, icon: "x",     tone: "red" },
+    quiet:       { label: "Sessiz · durmuş olabilir",  spin: false, icon: "",      tone: "dim" }
+  })
+  function look(s) { return stateLook[displayState(s)] || stateLook.ready }
+
+  // What the views show. "notice" reads as waiting (answer in the terminal).
   function displayState(s) {
+    void revision
     if (!s) return "ready"
     return hasPending(s.id) || s.state === "notice" ? "waiting" : s.state
   }
@@ -78,8 +195,9 @@ Item {
         onRead: line => bridge.receive(line, connection)
       }
       onConnectedChanged: {
-        // Hook killed (you answered in the terminal) or the agent gave up.
-        if (!connected && requestId !== "") bridge.dropRequest(requestId, "elsewhere")
+        // The hook went away without our answer: you answered in the
+        // terminal, or the agent gave up. See requestClosedElsewhere().
+        if (!connected && requestId !== "") bridge.requestClosedElsewhere(requestId)
       }
     }
   }
@@ -91,11 +209,11 @@ Item {
   // Last events received, for `omarchy-shell dynamicisland events` when
   // something looks wrong. Kept small and in memory only.
   property var eventLog: []
-  function logEvent(msg) {
+  function logEvent(msg, note) {
     var s = sessions[msg.session]
     var entry = { at: now(), ts: msg.ts || 0, event: msg.event, session: (msg.session || "").substring(0, 8),
-      agent: msg.agent || "", tool: msg.tool || "", entry: msg.entry || "", before: s ? s.state : "" }
-    eventLog = eventLog.concat([entry]).slice(-60)
+      agent: msg.agent || "", tool: msg.tool || "", entry: msg.entry || "", before: s ? s.state : "", note: note || "" }
+    eventLog = eventLog.concat([entry]).slice(-80)
   }
 
   function sessionFor(msg) {
@@ -104,9 +222,9 @@ Item {
     if (!s) {
       s = {
         id: id, agent: msg.agent || "", state: "ready", project: msg.project || "", cwd: msg.cwd || "",
-        tool: "", title: "", detail: "", prompt: "", message: "",
-        turnStartedAt: 0, updatedAt: now(), createdAt: now(), toolCount: 0,
-        pids: [], agentPid: 0, mode: ""
+        tool: "", title: "", detail: "", prompt: "", message: "", error: "",
+        turnStartedAt: 0, updatedAt: now(), createdAt: now(), lastEventAt: now(), toolCount: 0,
+        pids: [], agentPid: 0, mode: "", transcript: "", compactTrigger: "", lastTs: 0
       }
     }
     if (msg.project) s.project = msg.project
@@ -115,7 +233,9 @@ Item {
     if (msg.agentPid) s.agentPid = msg.agentPid
     if (msg.mode) s.mode = msg.mode
     if (msg.entry) s.entry = msg.entry
+    if (msg.transcript) s.transcript = msg.transcript
     s.updatedAt = now()
+    s.lastEventAt = now()
     return s
   }
 
@@ -128,11 +248,29 @@ Item {
   }
 
   function rebuild() {
+    revision++
     var list = []
     for (var k in sessions) list.push(sessions[k])
     list.sort((a, b) => b.updatedAt - a.updatedAt)
     sessionList = list
   }
+
+  function startTurn(s) {
+    s.state = "thinking"
+    s.turnStartedAt = now()
+    s.toolCount = 0
+    s.tool = ""; s.title = ""; s.detail = ""; s.message = ""; s.error = ""
+  }
+
+  function endTurn(s, state) {
+    s.state = state
+    s.finishedAt = now()
+    s.lastDuration = s.turnStartedAt ? now() - s.turnStartedAt : 0
+  }
+
+  // Events that move a turn along; an older one never rewinds a newer one.
+  readonly property var orderedEvents: ["UserPromptSubmit", "PreToolUse", "PostToolUse", "PostToolUseFailure",
+    "PermissionDenied", "PreCompact", "PostCompact", "Stop", "StopFailure", "Interrupt", "Question"]
 
   function receive(line, socket) {
     var msg
@@ -141,55 +279,82 @@ Item {
     // Acknowledge fire-and-forget events so the hook hangs up only after we
     // have the line. Permission requests are answered with the verdict later.
     if (msg.event !== "PermissionRequest") { socket.write("ok\n"); socket.flush() }
-    logEvent(msg)
 
-    // Headless runs (`claude -p`, `codex exec`, SDK scripts) are not sessions
-    // you are watching: no list entry, no "done" banners. A permission
-    // request still gets through, since something is actually waiting on it.
-    if (String(msg.entry || "").indexOf("sdk") === 0 && msg.event !== "PermissionRequest") return
+    if (String(msg.entry || "").indexOf("sdk") === 0 && msg.event !== "PermissionRequest") {
+      logEvent(msg, "headless, ignored")
+      return
+    }
 
     var ev = msg.event
+    settleAnswered(msg)
     if (ev === "PermissionResolved") {
-      // Answered in the agent itself (OpenCode reports it explicitly).
+      logEvent(msg)
       dropRequest(msg.request, "elsewhere")
       return
     }
     if (ev === "SessionEnd") {
+      logEvent(msg)
       removeSession(msg.session)
       return
     }
 
     var s = sessionFor(msg)
-    // Async hooks can land out of order; a state event older than the last
-    // one applied must not rewind the session (e.g. PostToolUse after the
-    // next PreToolUse).
     var ts = Number(msg.ts) || 0
-    var ordered = ["UserPromptSubmit", "PreToolUse", "PostToolUse", "PreCompact", "Stop"]
-    if (ordered.indexOf(ev) !== -1) {
-      if (ts && s.lastTs && ts < s.lastTs) { commit(s); return }
+    if (orderedEvents.indexOf(ev) !== -1) {
+      if (ts && s.lastTs && ts < s.lastTs) {
+        logEvent(msg, "older than last event, skipped")
+        commit(s)
+        return
+      }
       if (ts) s.lastTs = ts
     }
-    if (ev === "SessionStart") {
-      // `compact` fires mid-turn after an automatic compaction: Claude is
-      // still working, so the state must not fall back to "ready".
-      if (msg.source !== "compact" && s.state !== "thinking" && s.state !== "tool" && s.state !== "compacting") s.state = "ready"
-      else if (msg.source === "compact" && s.state === "compacting") s.state = "thinking"
-    } else if (ev === "UserPromptSubmit") {
-      s.state = "thinking"
+    logEvent(msg)
+
+    switch (ev) {
+    case "SessionStart":
+      // `compact` arrives in the middle of a compaction: leave the state to
+      // PreCompact/PostCompact. Anything else is a fresh, idle session
+      // (unless an out-of-order turn event already got here first).
+      if (msg.source === "compact") {
+        if (s.state === "compacting") s.state = s.compactTrigger === "manual" ? "ready" : "thinking"
+      } else if (!isBusy(s)) {
+        s.state = "ready"
+      }
+      break
+
+    case "UserPromptSubmit":
+      startTurn(s)
       s.prompt = msg.prompt || ""
-      s.turnStartedAt = now()
-      s.toolCount = 0
-      s.tool = ""; s.title = ""; s.detail = ""
-    } else if (ev === "PreToolUse") {
+      break
+
+    case "PreToolUse":
       s.state = "tool"
       s.tool = msg.tool || ""
       s.title = msg.title || ""
       s.detail = msg.detail || ""
       s.toolCount += 1
       if (!s.turnStartedAt) s.turnStartedAt = now()
-    } else if (ev === "PostToolUse") {
-      if (s.state === "tool" || s.state === "notice") s.state = "thinking"
-    } else if (ev === "PermissionNotice") {
+      break
+
+    case "PostToolUse":
+      if (s.state === "tool" || s.state === "notice" || s.state === "input") s.state = "thinking"
+      break
+
+    case "PostToolUseFailure":
+      if (msg.interrupt) endTurn(s, "interrupted")
+      else if (s.state === "tool") s.state = "thinking"
+      break
+
+    case "PermissionDenied":
+      // Auto mode turned a tool down; Claude keeps going.
+      if (s.state === "tool") s.state = "thinking"
+      break
+
+    case "Interrupt":
+      endTurn(s, "interrupted")
+      break
+
+    case "PermissionNotice":
       s.state = "notice"
       s.tool = msg.tool || s.tool
       s.title = msg.title || s.title
@@ -197,29 +362,56 @@ Item {
       commit(s)
       sessionNeedsInput(s, s.message)
       return
-    } else if (ev === "PreCompact") {
-      s.state = "compacting"
-    } else if (ev === "Notification") {
+
+    case "Question":
+    case "Elicitation":
+      s.state = "input"
       s.message = msg.message || ""
-      // Only "Claude is waiting for you" kinds deserve attention; permission
-      // prompts arrive as their own PermissionRequest, and the rest
-      // (auth_success, …) are not about you at all.
+      commit(s)
+      sessionNeedsInput(s, s.message)
+      return
+
+    case "Notification": {
+      // Only "the agent is waiting for you" kinds deserve attention.
+      // Permission prompts arrive as PermissionRequest; the rest
+      // (auth_success, …) are not about you.
       var wantsYou = msg.kind === "idle_prompt" || msg.kind === "elicitation_dialog"
         || (msg.kind === "" && /waiting for your input/i.test(msg.message || ""))
-      if (wantsYou && !hasPending(s.id) && s.state !== "thinking" && s.state !== "tool") {
+      if (wantsYou && !hasPending(s.id) && busyStates.indexOf(s.state) === -1) {
         s.state = "input"
+        s.message = msg.message || ""
         commit(s)
         sessionNeedsInput(s, s.message)
         return
       }
-    } else if (ev === "Stop") {
-      s.state = "done"
-      s.finishedAt = now()
-      s.lastDuration = s.turnStartedAt ? now() - s.turnStartedAt : 0
+      break
+    }
+
+    case "PreCompact":
+      s.compactTrigger = msg.trigger || ""
+      s.state = "compacting"
+      break
+
+    case "PostCompact":
+      // /compact by hand leaves Claude idle; an automatic one continues the turn.
+      s.state = (msg.trigger || s.compactTrigger) === "manual" ? "ready" : "thinking"
+      s.compactTrigger = ""
+      break
+
+    case "Stop":
+      endTurn(s, "done")
       commit(s)
       sessionFinished(s)
       return
-    } else if (ev === "PermissionRequest") {
+
+    case "StopFailure":
+      endTurn(s, "error")
+      s.error = msg.error || ""
+      commit(s)
+      sessionFailed(s)
+      return
+
+    case "PermissionRequest": {
       s.tool = msg.tool || s.tool
       s.title = msg.title || ""
       s.detail = msg.detail || ""
@@ -246,6 +438,7 @@ Item {
       permissionArrived(request)
       return
     }
+    }
     commit(s)
   }
 
@@ -261,14 +454,47 @@ Item {
     socket.flush()
     var req = null
     for (var i = 0; i < pending.length; i++) if (pending[i].id === id) req = pending[i]
+    if (req) logEvent({ event: "(answered " + behavior + " on island)", session: req.session, agent: req.agent, tool: req.tool })
     if (req && sessions[req.session]) {
       var s = sessions[req.session]
+      // Allowed: the tool runs. Denied from the island: Claude is told why
+      // and keeps going.
       s.state = behavior === "deny" ? "thinking" : "tool"
       s.updatedAt = now()
       commit(s)
     }
     dropRequest(id, behavior)
     return true
+  }
+
+  // An open island request whose prompt was evidently answered in the
+  // terminal: the tool already ran or failed, the turn ended, or a new prompt
+  // started. Close it and release the hook (it exits without a decision).
+  readonly property var settlingEvents: ["PostToolUse", "PostToolUseFailure", "PermissionDenied",
+    "Stop", "StopFailure", "UserPromptSubmit", "Interrupt"]
+  function settleAnswered(msg) {
+    if (settlingEvents.indexOf(msg.event) === -1) return
+    var sameTool = msg.event === "PostToolUse" || msg.event === "PostToolUseFailure" || msg.event === "PermissionDenied"
+    pending.filter(r => r.session === msg.session && (!sameTool || !msg.tool || r.tool === msg.tool)).forEach(r => {
+      var socket = sockets[r.id]
+      if (socket) {
+        socket.requestId = ""
+        socket.write(JSON.stringify({ behavior: "pass" }) + "\n")
+        socket.flush()
+      }
+      logEvent({ event: "(request answered in terminal)", session: r.session, agent: r.agent, tool: r.tool }, "settled by " + msg.event)
+      dropRequest(r.id, "elsewhere")
+    })
+  }
+
+  // Answered in the terminal (or abandoned). Allowed → PostToolUse follows;
+  // rejected → the transcript gets an interrupt marker. Look right away.
+  function requestClosedElsewhere(requestId) {
+    var req = null
+    for (var i = 0; i < pending.length; i++) if (pending[i].id === requestId) req = pending[i]
+    if (req) logEvent({ event: "(request closed by agent)", session: req.session, agent: req.agent, tool: req.tool })
+    dropRequest(requestId, "elsewhere")
+    if (req && sessions[req.session]) transcriptCheck.restart()
   }
 
   function dropRequest(requestId, how) {
@@ -290,11 +516,121 @@ Item {
     rebuild()
   }
 
+  // Forget every session and open request (the island's "refresh"). Hooks
+  // still waiting on a request are released without a decision, so each
+  // agent falls back to its own terminal prompt. Sessions reappear with
+  // their next event.
+  function reset() {
+    pending.forEach(r => {
+      var socket = sockets[r.id]
+      if (socket) {
+        socket.requestId = ""
+        socket.write(JSON.stringify({ behavior: "pass" }) + "\n")
+        socket.flush()
+      }
+    })
+    pending = []
+    sockets = ({})
+    sessions = ({})
+    sessionList = []
+    logEvent({ event: "(reset)", session: "", agent: "" }, "refresh from the island")
+    refreshInstalled()
+  }
+
   function clearFinished() {
     var next = {}
-    for (var k in sessions) if (isBusy(sessions[k])) next[k] = sessions[k]
+    for (var k in sessions) if (isBusy(sessions[k]) || needsYou(sessions[k])) next[k] = sessions[k]
     sessions = next
     rebuild()
+  }
+
+  function setState(id, state, note) {
+    var s = sessions[id]
+    if (!s || s.state === state) return
+    logEvent({ event: "(" + state + ")", session: id, agent: s.agent }, note)
+    endTurn(s, state)
+    s.updatedAt = now()
+    commit(s)
+  }
+
+  // ---------------------------------------------------------------- transcript watch
+
+  // Catches what no hook reports, by reading the end of the transcript:
+  //   "[Request interrupted by user…]"  Esc while writing, or a permission
+  //                                      rejected in the terminal → interrupted
+  //   system "turn_duration"             the turn is over; if no Stop came
+  //                                      within a few seconds → done
+  //   nothing new for quietAfterMs       → quiet (Esc before any output
+  //                                      leaves no trace at all)
+  // Runs only while some session with a transcript is busy.
+
+  // Reads the last turn's ending from transcript lines (oldest first).
+  function transcriptEnding(lines, since) {
+    var textOf = c => typeof c === "string" ? c : (Array.isArray(c) ? c.map(p => p && p.text ? p.text : "").join("") : "")
+    var ended = 0, interrupted = 0
+    for (var i = lines.length - 1; i >= 0; i--) {
+      var e
+      try { e = JSON.parse(lines[i]) } catch (err) { continue }   // partial first line
+      // Only conversation entries matter; Claude Code interleaves many
+      // bookkeeping types (snapshots, titles, modes, …) and adds new ones.
+      if (!e || (e.type !== "user" && e.type !== "assistant" && e.type !== "system")) continue
+      var at = Date.parse(e.timestamp || "") || 0
+      if (at && at < since - 1000) break                            // previous turn
+      if (e.type === "system" && e.subtype === "turn_duration") { ended = ended || at || 1; continue }
+      if (e.type === "system") continue
+      var content = e.message ? e.message.content : null
+      if (e.type === "user" && textOf(content).indexOf("[Request interrupted by user") === 0) { interrupted = at || 1; break }
+      break   // a prompt, an assistant message or a tool result: the turn's real content
+    }
+    return { ended: ended, interrupted: interrupted }
+  }
+
+  Process {
+    id: transcriptProbe
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var blocks = text.split("\u001e")
+        for (var b = 0; b < blocks.length; b++) {
+          var lines = blocks[b].split("\n").filter(l => l !== "")
+          if (lines.length < 1) continue
+          var head = lines[0].split("\t")
+          var s = bridge.sessions[head[0]]
+          if (!s || !bridge.isBusy(s) || bridge.hasPending(s.id)) continue
+          var mtime = Number(head[1]) * 1000
+          var end = bridge.transcriptEnding(lines.slice(1), s.turnStartedAt)
+          if (end.interrupted) {
+            bridge.setState(s.id, "interrupted", "transcript: interrupted by user")
+          } else if (end.ended && bridge.now() - end.ended > 3000) {
+            // Stop normally lands first; this only catches a lost one.
+            bridge.setState(s.id, "done", "transcript: turn ended without Stop")
+          } else if (s.state !== "tool" && bridge.now() - Math.max(s.lastEventAt, mtime) > bridge.quietAfterMs) {
+            // Tools may legitimately run for a long time; thinking may not.
+            bridge.setState(s.id, "quiet", "no event or transcript write for " + Math.round(bridge.quietAfterMs / 1000) + "s")
+          }
+        }
+      }
+    }
+  }
+
+  Timer {
+    id: transcriptCheck
+    interval: 1500
+    repeat: true
+    running: bridge.busySessions.some(s => s.transcript)
+    triggeredOnStart: true
+    onTriggered: {
+      if (transcriptProbe.running) return
+      var watch = bridge.sessionList.filter(s => s.transcript && bridge.isBusy(s))
+      if (!watch.length) return
+      var args = []
+      watch.forEach(s => { args.push(s.id); args.push(s.transcript) })
+      // Per session: "id<TAB>mtime" then the last lines of the transcript,
+      // blocks separated by an ASCII record separator.
+      transcriptProbe.command = ["sh", "-c",
+        "while [ $# -gt 1 ]; do if [ -f \"$2\" ]; then printf '%s\\t%s\\n' \"$1\" \"$(stat -c %Y \"$2\")\"; tail -c 32768 \"$2\" | tail -n 16; printf '\\036'; fi; shift 2; done",
+        "sh"].concat(args)
+      transcriptProbe.running = true
+    }
   }
 
   // ---------------------------------------------------------------- actions

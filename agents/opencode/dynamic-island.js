@@ -80,7 +80,8 @@ export const DynamicIsland = async ({ client, directory }) => {
       request: `opencode-${permissionID}`, tool: p.type || p.permission || "permission",
       title: p.title || title, detail, canAlways: true,
     }, { waitForReply: true })
-    if (!reply || !reply.behavior) return
+    // "pass" means it was answered in OpenCode itself: nothing to send.
+    if (!reply || !["allow", "always", "deny"].includes(reply.behavior)) return
     try { await respond(sessionID, permissionID, reply.behavior) } catch {}
   }
 

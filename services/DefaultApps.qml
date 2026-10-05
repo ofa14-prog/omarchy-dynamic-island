@@ -85,7 +85,16 @@ Item {
   }
 
   function openBrowser() { Quickshell.execDetached(["omarchy-launch-browser"]) }
-  function openFiles(path) { Quickshell.execDetached(["xdg-open", path || Quickshell.env("HOME")]) }
+  // Nautilus (Omarchy's default) is started the way Omarchy does it: its own
+  // new window through uwsm, not a D-Bus hand-off that may only raise an
+  // existing window. Any other file manager goes through xdg-open.
+  function openFiles(path) {
+    var dir = path || Quickshell.env("HOME")
+    if (/nautilus/i.test(filesId))
+      Quickshell.execDetached(["setsid", "uwsm-app", "--", "nautilus", "--new-window", dir])
+    else
+      Quickshell.execDetached(["xdg-open", dir])
+  }
   function openTerminal() { Quickshell.execDetached(["omarchy-launch-terminal"]) }
   function openEditor(path) {
     Quickshell.execDetached(path ? ["omarchy-launch-editor", path] : ["omarchy-launch-editor"])

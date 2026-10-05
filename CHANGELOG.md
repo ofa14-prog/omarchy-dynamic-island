@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0
+
+- Double-click a bubble to swap it with the center; the center activity takes that bubble's
+  place, and the arrangement is kept while those activities stay live.
+- The music activity shows only while something plays and leaves as soon as it is paused or
+  the player closes.
+- Refresh button on Home: click clears a stuck island, right-click restarts the Omarchy shell
+  (`omarchy-shell dynamicisland reset | restartShell`).
+- Agent state labels now update on every event (they could stick, e.g. "Idle" while the agent
+  worked).
+- Agent state machine rewritten and documented trigger by trigger in
+  services/AgentBridge.qml: tool failures, API errors, manual compaction, questions
+  (AskUserQuestion), permissions answered in the terminal, and interrupts (read from the
+  transcript, since no hook reports them) are all handled.
+- Shortcuts: Files opens through Omarchy's launcher, an "Opening…" banner confirms the click,
+  and repeated clicks are ignored for a moment.
+
 ## 1.1.0
 
 - Follows Omarchy's default coding agent: name, mark, colors and spinner on the agent page,

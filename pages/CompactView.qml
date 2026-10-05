@@ -17,17 +17,13 @@ Page {
   readonly property string agentState: island.agents.displayState(session)
   readonly property bool agentWorking: agentState === "thinking" || agentState === "tool" || agentState === "compacting"
 
+  // Labels and icons come from AgentBridge.stateLook, shared by all views.
+  readonly property var look: island.agents.look(session)
   function agentVerb() {
     var s = session
-    switch (agentState) {
-      case "waiting": return I18n.t("İzin gerekiyor")
-      case "input": return I18n.t("Seni bekliyor")
-      case "done": return I18n.t("Bitti")
-      case "compacting": return I18n.t("Sıkıştırıyor…")
-      case "tool": return (s && s.tool ? s.tool : I18n.t("Çalışıyor")) + "…"
-      case "thinking": return I18n.t("Düşünüyor…")
-    }
-    return I18n.t("Hazır")
+    if (agentState === "tool") return (s && s.tool ? s.tool : I18n.t("Çalışıyor")) + "…"
+    if (agentState === "input" && s && s.message) return I18n.t("Soru soruyor")
+    return I18n.t(look.label)
   }
 
   // ---------------------------------------------------------------- idle
@@ -81,15 +77,15 @@ Page {
         agent: view.session ? view.session.agent : island.agentId
         anchors.centerIn: parent
         size: Math.round(view.lead * 0.82)
-        visible: view.agentState !== "done"
+        visible: view.look.icon === ""
         running: view.agentWorking
       }
       Icon {
         anchors.centerIn: parent
-        visible: view.agentState === "done"
-        name: "check"
+        visible: view.look.icon !== ""
+        name: view.look.icon
         size: Math.round(view.lead * 0.8)
-        color: Theme.green
+        color: view.look.tone === "green" ? Theme.green : view.look.tone === "red" ? Theme.red : Theme.secondary
       }
     }
 
@@ -119,7 +115,8 @@ Page {
         running: view.agentWorking
         font.pixelSize: 13
         font.weight: Font.DemiBold
-        baseColor: view.agentState === "done" ? Theme.green : view.agentProfile.color
+        baseColor: view.look.tone === "green" ? Theme.green : view.look.tone === "red" ? Theme.red
+          : view.look.tone === "dim" ? Theme.secondary : view.agentProfile.color
         glowColor: view.agentProfile.glow
       }
       Label {

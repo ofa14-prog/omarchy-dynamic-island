@@ -8,6 +8,7 @@ Page {
   property var island
   readonly property var info: island.peekData
   readonly property bool isAgent: info.icon.indexOf("agent") === 0
+  readonly property bool isApp: info.icon.indexOf("app:") === 0
   readonly property string agentLogo: isAgent ? island.logoFor(info.icon.split(":")[1] || island.agentId) : ""
 
   Accessible.role: Accessible.AlertMessage
@@ -33,8 +34,8 @@ Page {
       Icon {
         anchors.centerIn: parent
         size: 20
-        name: view.isAgent ? (view.agentLogo ? "" : "sparkles") : view.info.icon
-        source: view.agentLogo
+        name: view.isApp ? "" : view.isAgent ? (view.agentLogo ? "" : "sparkles") : view.info.icon
+        source: view.isApp ? view.info.icon.substring(4) : view.agentLogo
         color: view.info.tint
       }
     }

@@ -14,7 +14,7 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 | | |
 |---|---|
 | **Kompakt** | Boştayken saat; canlı etkinlik varsa solda ve sağda bilgi, ortası temiz |
-| **Baloncuklar** | İkinci canlı etkinlik sağa, üçüncüsü sola ayrılır; her biri kendi başına çalışır |
+| **Baloncuklar** | İkinci canlı etkinlik sağa, üçüncüsü sola ayrılır; her biri kendi başına çalışır. Çift tıklanan baloncuk ortayla yer değiştirir |
 | **Peek** | Şarkı değişti, Claude bitirdi, şarj başladı… için kısa bant |
 | **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri |
 | **Uyarılar** | Claude izin isterse ya da süre dolarsa ada kendiliğinden açılır, cevaplanana kadar açık kalır |
@@ -23,6 +23,9 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi uygulama ikonlarıyla
   kısayollar; hızlı zamanlayıcılar.
 - **Müzik**: tüm MPRIS oynatıcılar; kapak, sürüklenebilir ilerleme çubuğu, kontroller. Dalga formu kapak renginde.
+  Müzik etkinliği yalnızca çalarken görünür; duraklatılınca ya da kapatılınca hemen kaybolur.
+- **Yenile**: Ana sayfadaki yuvarlak ok takılan adayı düzeltir (oturumlar, istekler, uyarılar);
+  sağ tık tüm Omarchy kabuğunu yeniden başlatır.
 - **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
   spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
 - **İzinler**: araç, dosya/komut, renkli diff; **İzin ver / Her zaman / Reddet**. Ada, ajanın terminal
@@ -58,7 +61,9 @@ Arka plan çalıştırmaları (`claude -p`, SDK betikleri) oturum ya da uyarı o
 | Kompakt adada tekerlek | Ses |
 | Dosya sürükle | Raf açılır |
 | İmleç ayrılır | 650 ms sonra kapanır (uyarı beklerken hariç) |
-| Baloncuk: tık / sağ tık / orta tık | Aç / adaya geçir / oynat-duraklat |
+| Baloncuk: tık | O etkinliği aç |
+| Baloncuk: çift tık (veya sağ tık) | Ortayla yer değiştir: adaya geçer, ortadaki onun yerine gider |
+| Baloncuk: orta tık | Müziği oynat/duraklat, sayacı duraklat/sürdür |
 
 Klavye (ada odaktayken): `Esc` kapat/reddet · `Enter`/`Y` izin ver · `A` her zaman · `N` reddet ·
 `T` terminal · `[` `]` sekme · `Tab` düğmeler arası · `Boşluk` oynat/duraklat.
@@ -116,7 +121,8 @@ için [İngilizce README'deki tabloya](README.md#settings) bakın. Örnek:
 ## IPC
 
 ```sh
-omarchy-shell dynamicisland toggle | open <home|music|claude|timer|shelf> | close
+omarchy-shell dynamicisland toggle | open <home|music|agent|timer|shelf> | close
+omarchy-shell dynamicisland reset | restartShell
 omarchy-shell dynamicisland approve | always | deny
 omarchy-shell dynamicisland timer 300 | stopwatch | timerStop
 omarchy-shell dynamicisland shelfAdd /dosya/yolu

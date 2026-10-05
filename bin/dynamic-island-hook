@@ -35,6 +35,12 @@ GEMINI_EVENTS = {
     "Notification": "Notification",
 }
 
+# Codex calls its interrupt event "Interrupt"; Claude Code reports interrupts
+# only on a failed tool (PostToolUseFailure.is_interrupt).
+
+# Tools that ask *you* something instead of asking for permission.
+QUESTION_TOOLS = {"AskUserQuestion"}
+
 SHELLS = {"sh", "bash", "dash", "zsh", "fish", "env", "timeout", "python3", "python"}
 
 
@@ -169,6 +175,21 @@ def build_message(agent, data):
             msg["title"] = short(details.get("title") or details.get("command") or data.get("message"), 160)
     if event == "SessionStart":
         msg["source"] = data.get("source", "")
+    if event in ("PreCompact", "PostCompact"):
+        msg["trigger"] = data.get("trigger", "")  # "manual" (/compact) or "auto"
+    if event == "PostToolUseFailure":
+        msg["interrupt"] = bool(data.get("is_interrupt"))
+        msg["error"] = short(data.get("error"), 200)
+    if event == "StopFailure":
+        msg["error"] = short(data.get("error"), 200)
+    if event == "PermissionDenied":
+        msg["error"] = short(data.get("reason"), 200)
+    if event == "Elicitation":
+        msg["message"] = short(data.get("message") or data.get("server_name"), 240)
+    # Lets the island notice a turn that went quiet (Esc while Claude was
+    # writing sends no event at all; the transcript stops growing).
+    if data.get("transcript_path"):
+        msg["transcript"] = data.get("transcript_path")
     if event == "PermissionRequest":
         suggestions = data.get("permission_suggestions")
         # Codex has no "always" answer for hooks yet.
@@ -205,6 +226,16 @@ def main():
         sock.connect(SOCK)
     except OSError:
         return done()
+
+    # Claude asking you something (AskUserQuestion) reaches hooks as a
+    # permission request, but it is a question to answer in the terminal,
+    # not something to allow or deny: report it and step aside.
+    if msg["event"] == "PermissionRequest" and msg.get("tool") in QUESTION_TOOLS:
+        ti = data.get("tool_input") if isinstance(data.get("tool_input"), dict) else {}
+        questions = ti.get("questions") if isinstance(ti.get("questions"), list) else []
+        first = questions[0] if questions and isinstance(questions[0], dict) else {}
+        msg["event"] = "Question"
+        msg["message"] = short(first.get("question") or ti.get("question") or "", 240)
 
     if msg["event"] != "PermissionRequest":
         # Wait for the island's "ok" so the line is read before we hang up;

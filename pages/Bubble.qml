@@ -6,8 +6,10 @@ import "../components"
 // two activities run at once. `side` is +1 (right of the island) or -1 (left).
 // It emerges from under the island's edge on a spring and tucks back in.
 //
-//   click        open that activity (stop, for a screen recording)
-//   right-click  swap it into the main island
+//   click         open that activity (stop, for a screen recording)
+//   double-click  swap it with the center: it moves into the island and the
+//                 center activity takes this bubble's place
+//   right-click   same swap
 //   middle-click play/pause music, pause/resume the timer
 //   wheel        volume (music)
 Item {
@@ -73,7 +75,7 @@ Item {
     color: Theme.bg
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.06)
-    scale: mouse.pressed ? 0.88 : bubble.hovered ? 1.08 : 1
+    scale: (mouse.pressed ? 0.88 : bubble.hovered ? 1.08 : 1) * bubble.pop
     Behavior on scale {
       enabled: !Theme.reduceMotion
       SpringAnimation { spring: Theme.snapSpring; damping: Theme.snapDamping; epsilon: 0.002 }
@@ -167,6 +169,24 @@ Item {
     }
   }
 
+  // A swap lands with a small spring "pop" as the new content arrives.
+  property real pop: 1
+  onKindChanged: if (shown && !Theme.reduceMotion) popAnim.restart()
+  SequentialAnimation {
+    id: popAnim
+    NumberAnimation { target: bubble; property: "pop"; to: 0.55; duration: 90; easing.type: Easing.InQuad }
+    SpringAnimation { target: bubble; property: "pop"; to: 1; spring: 5; damping: 0.28; epsilon: 0.005 }
+  }
+
+  // A single click waits out the system's double-click interval, so a
+  // double-click (however slow, within that interval) never also opens the
+  // page underneath.
+  Timer {
+    id: singleClick
+    interval: Qt.styleHints.mouseDoubleClickInterval + 30
+    onTriggered: bubble.activate()
+  }
+
   MouseArea {
     id: mouse
     anchors.fill: parent
@@ -175,13 +195,18 @@ Item {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
     onClicked: event => {
-      if (event.button === Qt.RightButton) { island.pinned = bubble.kind; return }
+      if (event.button === Qt.RightButton) { island.swapToCenter(bubble.kind); return }
       if (event.button === Qt.MiddleButton) {
         if (bubble.kind === "music") island.music.togglePlaying()
         else if (bubble.kind === "timer") island.timer.togglePause()
         return
       }
-      bubble.activate()
+      singleClick.restart()
+    }
+    onDoubleClicked: event => {
+      if (event.button !== Qt.LeftButton) return
+      singleClick.stop()
+      island.swapToCenter(bubble.kind)
     }
     onWheel: wheel => {
       if (bubble.kind === "music")
@@ -189,6 +214,6 @@ Item {
     }
     Accessible.role: Accessible.Button
     Accessible.name: bubble.label()
-    Accessible.description: I18n.t("Tıkla: aç. Sağ tık: öne getir.")
+    Accessible.description: I18n.t("Tıkla: aç. Çift tık: ortaya al.")
   }
 }

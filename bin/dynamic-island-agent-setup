@@ -48,13 +48,15 @@ def hook_command(agent):
 
 # event -> async?  (PermissionRequest blocks until you answer)
 CLAUDE_EVENTS = {"SessionStart": True, "SessionEnd": True, "UserPromptSubmit": True, "PreToolUse": True,
-                 "PostToolUse": True, "Notification": True, "Stop": True, "PreCompact": True,
-                 "PermissionRequest": False}
+                 "PostToolUse": True, "PostToolUseFailure": True, "PermissionDenied": True,
+                 "Notification": True, "Elicitation": True, "Stop": True, "StopFailure": True,
+                 "PreCompact": True, "PostCompact": True, "PermissionRequest": False}
 CODEX_EVENTS = {"SessionStart": True, "SessionEnd": True, "UserPromptSubmit": True, "PreToolUse": True,
-                "PostToolUse": True, "Stop": True, "PreCompact": True, "PermissionRequest": False}
+                "PostToolUse": True, "Stop": True, "PreCompact": True, "PostCompact": True,
+                "Interrupt": True, "PermissionRequest": False}
 GEMINI_EVENTS = ["SessionStart", "SessionEnd", "BeforeAgent", "AfterAgent", "BeforeTool", "AfterTool",
                  "PreCompress", "Notification"]
-TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PermissionRequest"}
+TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionDenied", "PermissionRequest"}
 
 
 def load(path):

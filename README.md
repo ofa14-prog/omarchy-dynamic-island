@@ -15,7 +15,7 @@ right from the island.
 | | |
 |---|---|
 | **Compact** | Idle clock, or the live activity's leading/trailing content around a clean middle |
-| **Bubbles** | A second live activity splits off to the right, a third to the left. Each works on its own |
+| **Bubbles** | A second live activity splits off to the right, a third to the left. Each works on its own; double-click one to swap it with the center |
 | **Peek** | Brief banner for a track change, Claude finishing, charging… |
 | **Expanded** | Home · Music · Claude · Timer · Shelf, as a segmented control |
 | **Alerts** | A Claude permission request or a finished timer opens the island and holds it open |
@@ -23,6 +23,9 @@ right from the island.
 - **Home**: time and date, Claude usage rings (5-hour / weekly), battery, shortcuts to your
   *default* agent, editor, browser, file manager and terminal (with their own app icons), quick timers.
 - **Music**: any MPRIS player; artwork, a draggable scrubber, transport. The waveform takes the artwork's color.
+  The music activity shows only while something plays and leaves the moment it is paused or closed.
+- **Refresh**: the round arrow on Home clears a stuck island (sessions, requests, alerts);
+  right-click it to restart the whole Omarchy shell.
 - **Agent**: follows Omarchy's default agent (`omarchy default agent …`): its name, mark, colors and
   spinner. Every session, what it is doing right now, elapsed time; jump to its terminal, open its
   folder in your editor, start a new session.
@@ -60,7 +63,9 @@ Headless runs (`claude -p`, SDK scripts) never show up as sessions or banners.
 | Scroll on the compact island | Volume |
 | Drag a file onto it | Opens the shelf |
 | Pointer leaves | Closes after 650 ms (not while an alert is waiting) |
-| Bubble: click / right-click / middle-click | Open it / swap it into the island / play-pause |
+| Bubble: click | Open that activity |
+| Bubble: double-click (or right-click) | Swap it with the center: it moves into the island, the center takes its place |
+| Bubble: middle-click | Play / pause music, pause / resume the timer |
 
 Keyboard while the island has focus: `Esc` close or deny · `Enter`/`Y` allow · `A` always ·
 `N` deny · `T` go to terminal · `[` `]` switch tabs · `Tab` move between controls · `Space` play/pause.
@@ -133,12 +138,14 @@ Optional `~/.config/omarchy/dynamic-island.json`; changes apply live.
 | `autoExpandPermission` | `true` | Open on Claude permission requests |
 | `hideOnFullscreen` | `true` | Hide over fullscreen windows (alerts still show) |
 | `peekOnTrackChange` / `peekOnAgentDone` | `true` | |
+| `agentQuietSeconds` | `180` | A busy turn with no sign of life for this long shows as "quiet" |
 | `shortcuts` | `[]` | Empty uses your defaults. Example: `[{"icon":"globe","label":"Web","command":["omarchy-launch-browser"]}]`. Actions: `agent`, `editor`, `browser`, `files`, `terminal`, `screenshot`, `stopwatch`, `{"action":"timer","seconds":600}`, `page:<name>` |
 
 ## IPC
 
 ```sh
-omarchy-shell dynamicisland toggle | open <home|music|claude|timer|shelf> | close
+omarchy-shell dynamicisland toggle | open <home|music|agent|timer|shelf> | close
+omarchy-shell dynamicisland reset | restartShell
 omarchy-shell dynamicisland approve | always | deny
 omarchy-shell dynamicisland timer 300 | stopwatch | timerStop
 omarchy-shell dynamicisland shelfAdd /path/to/file

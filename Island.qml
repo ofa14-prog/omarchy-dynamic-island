@@ -19,6 +19,33 @@ import "components/Agents.js" as Agents
 //   expanded – the full card; pages for home, music, agent, timer and shelf
 // Alerts (an agent permission request, a finished timer) expand on their own
 // and hold the island open until answered.
+//
+// ═══════════════════════════════════════════════ WHAT THE ISLAND REACTS TO
+//
+//   trigger                                  island reaction
+//   ──────────────────────────────────────────────────────────────────────
+//   agent permission request                 opens on the permission page
+//                                            (autoExpandPermission) or banner;
+//                                            stays open until answered
+//   permission answered on the island        closes + "Allowed" / "Denied" banner
+//   permission answered in the terminal      closes quietly
+//   agent turn finished (Stop)               "<agent> finished" banner
+//                                            (peekOnAgentDone), ✓ in compact for 8 s
+//   agent turn failed (StopFailure)          "<agent> stopped on an error" banner
+//   agent waiting for you (question,         "<agent> is waiting for you" banner,
+//   elicitation, idle prompt) / Gemini       pulsing dot in compact until you act
+//   permission in its terminal
+//   agent turn interrupted / quiet           no banner; compact falls back
+//   timer finished                           opens on the timer, shakes, chimes
+//   new track (settled 1.5 s, playing)       banner (peekOnTrackChange)
+//   charger plugged in (settled 1.5 s)       "Charging" banner
+//   screen recording starts/stops            red activity appears/disappears
+//   file dragged over the island             opens the shelf
+//   pointer hover / leave                    opens after hoverDelay / closes
+//                                            after collapseDelay
+//
+//   Agent session states and the events behind them are documented in
+//   services/AgentBridge.qml.
 Item {
   id: island
 
@@ -55,7 +82,8 @@ Item {
     autoExpandPermission: true,
     hideOnFullscreen: true,
     shortcuts: [],
-    agent: ""
+    agent: "",
+    agentQuietSeconds: 180
   })
   property var userConfig: ({})
   function cfg(key) { return userConfig[key] !== undefined ? userConfig[key] : defaults[key] }
@@ -153,9 +181,18 @@ Item {
     return out
   }
 
+  // A second click on the same shortcut while its app is still starting
+  // would open it twice: ignore repeats for a moment.
+  property string lastShortcut: ""
+  property double lastShortcutAt: 0
+
   function runShortcut(item) {
     if (!item) return
     var action = item.action || ""
+    var key = action + "|" + (item.label || "")
+    if (key === lastShortcut && Date.now() - lastShortcutAt < 2000) return
+    lastShortcut = key
+    lastShortcutAt = Date.now()
     if (action === "stopwatch") { timer.startStopwatch(); openPage("timer"); return }
     if (action === "timer") { timer.startCountdown(Number(item.seconds) || 300); openPage("timer"); return }
     if (action.indexOf("page:") === 0) { openPage(action.substring(5)); return }
@@ -171,6 +208,9 @@ Item {
       Quickshell.execDetached(cmd)
     }
     collapse()
+    // Apps take a second or two to show up; say it's coming.
+    if (action !== "screenshot")
+      peek(item.image ? "app:" + item.image : (item.icon || "arrow-up-right"), I18n.t("Açılıyor"), item.label || "", Theme.fg, 1600)
   }
 
   // ================================================================ services
@@ -179,6 +219,7 @@ Item {
     id: agentsSvc
     pluginDir: island.pluginDir
     defaultAgent: island.agentId
+    quietAfterMs: Math.max(20, Number(island.cfg("agentQuietSeconds")) || 180) * 1000
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {
         island.openPage("permission", "alert")
@@ -195,12 +236,19 @@ Item {
         else if (how === "deny") island.peek("x", I18n.t("Reddedildi"), "", Theme.red, 1300)
       }
     }
+    onSessionFailed: s => {
+      if (island.mode !== "expanded")
+        island.peek("agent:" + s.agent, I18n.t("%1 bir hatayla durdu").arg(island.profile(s.agent).name), s.project + (s.error ? " · " + s.error : ""), Theme.red, 3600, "agent")
+    }
     onSessionFinished: s => {
       if (island.cfg("peekOnAgentDone") !== false && island.cfg("peekOnClaudeDone") !== false && island.mode !== "expanded")
         island.peek("agent:" + s.agent, I18n.t("%1 bitirdi").arg(island.profile(s.agent).name), s.project + (s.lastDuration ? " · " + island.duration(s.lastDuration) : ""), island.profile(s.agent).color, 2600, "agent")
     }
     onSessionNeedsInput: (s, message) => {
-      if (island.mode !== "expanded") island.peek("agent:" + s.agent, (s.state === "notice" ? I18n.t("%1 izin istiyor") : I18n.t("%1 seni bekliyor")).arg(island.profile(s.agent).name), s.project + (s.state === "notice" && s.title ? " · " + s.title : ""), island.profile(s.agent).color, 3200, "agent")
+      if (island.mode === "expanded") return
+      var title = (s.state === "notice" ? I18n.t("%1 izin istiyor") : message ? I18n.t("%1 soruyor") : I18n.t("%1 seni bekliyor")).arg(island.profile(s.agent).name)
+      var detail = s.state === "notice" ? (s.title || s.project) : (message || s.project)
+      island.peek("agent:" + s.agent, title, detail, island.profile(s.agent).color, 4000, "agent")
     }
   }
 
@@ -276,16 +324,16 @@ Item {
 
   // ================================================================ activities
 
-  property string pinned: ""   // user-chosen primary (via the bubble)
-
-  readonly property bool musicLive: music.available && (music.playing || nowMs - music.lastPlayingAt < 30000)
+  // Music is a live activity only while it plays: pausing or closing the
+  // player removes it from the island at once.
+  readonly property bool musicLive: music.available && music.playing
   readonly property var live: {
     // "claude" is the pre-1.1 name of the agent activity.
     var order = (cfg("priority") || []).map(k => k === "claude" ? "agent" : k)
     var out = []
     for (var i = 0; i < order.length; i++) {
       var k = order[i]
-      if (k === "agent" && (agents.busy || recentlyFinished)) out.push(k)
+      if (k === "agent" && (agents.live || recentlyFinished)) out.push(k)
       else if (k === "timer" && timer.active) out.push(k)
       else if (k === "music" && musicLive) out.push(k)
       else if (k === "recording" && recording.active) out.push(k)
@@ -295,20 +343,43 @@ Item {
     for (var j = 0; j < all.length; j++) {
       var a = all[j]
       if (out.indexOf(a) !== -1 || order.indexOf(a) !== -1) continue
-      if ((a === "agent" && (agents.busy || recentlyFinished)) || (a === "timer" && timer.active)
+      if ((a === "agent" && (agents.live || recentlyFinished)) || (a === "timer" && timer.active)
           || (a === "music" && musicLive) || (a === "recording" && recording.active)) out.push(a)
     }
     return out
   }
   // A finished agent turn lingers in compact for a moment with a checkmark.
-  readonly property bool recentlyFinished: agents.focusSession !== null && agents.focusSession.state === "done"
+  // A turn that just ended (done, stopped or failed) lingers in compact for a
+  // moment so you see how it ended.
+  readonly property bool recentlyFinished: agents.revision >= 0 && agents.focusSession !== null
+    && ["done", "interrupted", "error"].indexOf(agents.focusSession.state) !== -1
     && nowMs - (agents.focusSession.finishedAt || 0) < 8000
-  readonly property string primary: live.indexOf(pinned) !== -1 ? pinned : (live.length ? live[0] : "idle")
-  // The main pill shows `primary`; the next activity splits off to the right,
-  // a third one to the left.
-  readonly property var others: live.filter(k => k !== primary)
-  readonly property string secondary: others.length > 0 ? others[0] : ""
-  readonly property string tertiary: others.length > 1 ? others[1] : ""
+  // ---- slots: [center pill, right bubble, left bubble]
+  // By default activities fill the slots in priority order. Double-clicking
+  // a bubble swaps it with the center, and that arrangement is kept: an
+  // activity that ends just leaves its slot (the others close up), a new one
+  // takes the next free slot. Once nothing is live the arrangement resets.
+  property var arrangement: []
+  readonly property var slots: {
+    if (arrangement.length === 0) return live
+    var out = arrangement.filter(k => live.indexOf(k) !== -1)
+    for (var i = 0; i < live.length; i++) if (out.indexOf(live[i]) === -1) out.push(live[i])
+    return out
+  }
+  onLiveChanged: if (live.length === 0 && arrangement.length) arrangement = []
+
+  function swapToCenter(kind) {
+    var s = slots.slice()
+    var i = s.indexOf(kind)
+    if (i <= 0) return
+    s[i] = s[0]
+    s[0] = kind
+    arrangement = s
+  }
+
+  readonly property string primary: slots.length ? slots[0] : "idle"
+  readonly property string secondary: slots.length > 1 ? slots[1] : ""
+  readonly property string tertiary: slots.length > 2 ? slots[2] : ""
 
   // ================================================================ state
 
@@ -359,6 +430,33 @@ Item {
     mode = "expanded"
     collapseTimer.stop()
     focusScope.forceActiveFocus()
+  }
+
+  // ---- refresh
+  // Quick: clears stuck agent sessions and requests, alerts, banners and
+  // motion, and returns to compact. Nothing else on the desktop is touched.
+  function resetIsland() {
+    agents.reset()
+    timer.dismissRing()
+    peekTimer.stop()
+    hoverTimer.stop()
+    collapseTimer.stop()
+    shakeAnim.stop(); shakeX = 0
+    bounceAnim.stop(); bounceY = 0
+    arrangement = []
+    dragHover = false
+    springMode = "close"
+    pageSlide = 0
+    page = "home"
+    mode = "compact"
+    peek("restart", I18n.t("Ada yenilendi"), "", Theme.green, 1500)
+  }
+
+  // Full: restarts the whole Omarchy shell (bar included), which reloads the
+  // island from disk. Omarchy's launcher brings the shell back in a second.
+  function restartShell() {
+    Quickshell.execDetached(["sh", "-c",
+      "pkill -KILL -f \"quickshell -n -p ${OMARCHY_PATH:-/usr/share/omarchy}/shell\""])
   }
 
   function toggle() {
@@ -559,6 +657,8 @@ Item {
   IpcHandler {
     target: "dynamicisland"
     function toggle(): string { island.toggle(); return "ok" }
+    function reset(): string { island.resetIsland(); return "ok" }
+    function restartShell(): string { island.restartShell(); return "ok" }
     function open(page: string): string { island.openPage(page || island.defaultPage(), "key"); return "ok" }
     function close(): string { island.collapse(); return "ok" }
     function approve(): string { return island.agents.respond("", "allow") ? "ok" : "no-request" }
@@ -575,12 +675,12 @@ Item {
       var log = island.agents.eventLog
       for (var i = 0; i < log.length; i++) {
         var e = log[i], s = island.agents.sessions[Object.keys(island.agents.sessions).filter(k => k.indexOf(e.session) === 0)[0]]
-        out.push(new Date(e.at).toISOString().substring(11, 23) + " " + e.agent + " " + e.session + " " + e.event + (e.tool ? "(" + e.tool + ")" : "") + " entry=" + e.entry + " ts=" + e.ts + " was=" + e.before)
+        out.push(new Date(e.at).toISOString().substring(11, 23) + " " + e.agent + " " + e.session + " " + e.event + (e.tool ? "(" + e.tool + ")" : "") + " entry=" + e.entry + " ts=" + e.ts + " was=" + e.before + (e.note ? "  ← " + e.note : ""))
       }
       return out.join("\n")
     }
     function sessions(): string {
-      return JSON.stringify(island.agents.sessionList.map(s => ({ id: s.id.substring(0, 8), agent: s.agent, state: island.agents.displayState(s), tool: s.tool, project: s.project, lastTs: s.lastTs })))
+      return JSON.stringify(island.agents.sessionList.map(s => ({ id: s.id.substring(0, 8), agent: s.agent, state: island.agents.displayState(s), tool: s.tool, project: s.project, lastTs: s.lastTs, transcript: s.transcript, turnStartedAt: s.turnStartedAt })))
     }
     function status(): string {
       return JSON.stringify({ agent: island.agentId, mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,

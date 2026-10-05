@@ -23,23 +23,24 @@ Page {
     return st === "thinking" || st === "tool" || st === "compacting"
   }
 
+  // Labels and tones come from AgentBridge.stateLook; rows add detail.
   function stateText(s) {
-    switch (agents.displayState(s)) {
+    var st = agents.displayState(s)
+    switch (st) {
       case "waiting": return I18n.t("İzin bekliyor · ") + (s.tool || "")
-      case "input": return s.message || I18n.t("Girdi bekliyor")
-      case "thinking": return I18n.t("Düşünüyor…")
+      case "input": return s.message || I18n.t("Seni bekliyor")
       case "compacting": return I18n.t("Bağlamı sıkıştırıyor…")
       case "tool": return (s.tool || I18n.t("Araç")) + (s.title ? " · " + s.title : "") + "…"
       case "done": return I18n.t("Bitti") + (s.lastDuration ? " · " + island.duration(s.lastDuration) : "")
+      case "error": return I18n.t("Hata") + (s.error ? " · " + s.error : "")
     }
-    return I18n.t("Hazır")
+    return I18n.t(agents.look(s).label)
   }
 
   function stateColor(s) {
-    var st = agents.displayState(s)
-    if (st === "waiting" || st === "input" || working(s)) return island.profile(s.agent).color
-    if (st === "done") return Theme.green
-    return Theme.secondary
+    var tone = agents.look(s).tone
+    return tone === "agent" ? island.profile(s.agent).color : tone === "green" ? Theme.green
+      : tone === "red" ? Theme.red : Theme.secondary
   }
 
   Column {
@@ -155,10 +156,10 @@ Page {
               anchors.centerIn: parent
               agent: row.s.agent || "claude"
               size: 20
-              visible: agents.displayState(row.s) !== "done"
+              visible: agents.look(row.s).icon === ""
               running: page.working(row.s)
             }
-            Icon { anchors.centerIn: parent; visible: agents.displayState(row.s) === "done"; name: "check"; size: 20; color: Theme.green }
+            Icon { anchors.centerIn: parent; visible: agents.look(row.s).icon !== ""; name: agents.look(row.s).icon; size: 20; color: page.stateColor(row.s) }
           }
 
           Column {
