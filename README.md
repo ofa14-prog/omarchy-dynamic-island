@@ -7,6 +7,8 @@ shape that springs open, splits into bubbles and shakes like the real thing, wit
 timers, screen recording, a file shelf, launch shortcuts, and your **Claude Code** sessions,
 including approving or denying tool permissions right from the island.
 
+![Dynamic Island](preview.png)
+
 ## Features
 
 | | |

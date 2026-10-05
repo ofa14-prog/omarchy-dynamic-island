@@ -7,6 +7,8 @@ fiziğiyle açılan, baloncuklara bölünen ve titreyen tek bir siyah şekil: m�
 dosya rafı, kısayollar ve **Claude Code** oturumlarınız. Araç izinlerini doğrudan adadan
 onaylayabilir ya da reddedebilirsiniz.
 
+![Dynamic Island](preview.png)
+
 ## Özellikler
 
 | | |

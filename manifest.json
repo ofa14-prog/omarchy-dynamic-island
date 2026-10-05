@@ -13,5 +13,6 @@
     "service": "Island.qml"
   },
   "icon": "assets/icon.svg",
+  "preview": "preview.png",
   "homepage": "https://github.com/ofa14-prog/omarchy-dynamic-island"
 }
