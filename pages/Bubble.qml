@@ -23,13 +23,19 @@ Item {
   property string kind: activity !== "" ? activity : kind   // keep content while hiding
 
   readonly property int gap: 7
-  width: island.compactH + island.hoverGrowH
+  // The bubble's resting place is fixed by the *compact* island, not the
+  // live (animating) shape: opening and closing the island never moves it,
+  // it just fades out and back in place. It only slides, tucking in under
+  // the island's edge, when its activity starts or ends.
+  readonly property bool tucked: activity === ""
+  readonly property real restX: side > 0
+    ? Math.round(parent.width / 2 + island.liveW / 2 + gap)
+    : Math.round(parent.width / 2 - island.liveW / 2 - gap - width)
+  width: island.compactH
   height: width
-  y: anchor.y + (anchor.height - height) / 2
-  x: side > 0
-    ? anchor.x + anchor.width + (shown ? gap : -width * 0.9)
-    : anchor.x - width - (shown ? gap : -width * 0.9)
-  scale: shown ? 1 : 0.3
+  y: Math.round(island.topY + (island.compactH - height) / 2)
+  x: tucked ? restX - side * width * 0.9 : restX
+  scale: shown ? 1 : (tucked ? 0.3 : 0.85)
   opacity: shown ? 1 : 0
   z: -1
 
