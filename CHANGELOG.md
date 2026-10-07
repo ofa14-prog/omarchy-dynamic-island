@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0
+
+- Live feed on the agent page for Claude Code and Codex: the last prompts, replies, tool calls
+  and their output, read from the session transcript (`bin/dynamic-island-transcript`) only
+  while the page is open. Click a session row to watch it when several run.
+- Shelf bubble: while the shelf holds anything it shows as a side bubble with the item count
+  and a fill ring. Clicking it shelves the clipboard: copied files as they are, a copied image
+  or text saved as a file (removed again when it leaves the shelf). Alone, it never takes the
+  center unless you double-click it there.
+- "Add clipboard" on the shelf page, and a click on the empty shelf does the same.
+
 ## 1.2.0
 
 - Double-click a bubble to swap it with the center; the center activity takes that bubble's

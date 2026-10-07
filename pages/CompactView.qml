@@ -163,6 +163,40 @@ Page {
     }
   }
 
+  // ---------------------------------------------------------------- shelf
+  // Only when you double-click the shelf bubble into the middle.
+  Page {
+    anchors.fill: parent
+    shown: view.kind === "shelf"
+    Item {
+      x: view.edge
+      width: view.lead; height: view.lead
+      anchors.verticalCenter: parent.verticalCenter
+      ProgressRing {
+        anchors.fill: parent
+        thickness: 2.5
+        progress: Math.max(0.04, island.shelf.fullness)
+        color: Theme.blue
+      }
+      Icon {
+        anchors.centerIn: parent
+        name: "shelf"
+        size: Math.round(view.lead * 0.5)
+        color: Theme.blue
+      }
+    }
+    Label {
+      anchors.right: parent.right
+      anchors.rightMargin: view.edge + 6
+      anchors.verticalCenter: parent.verticalCenter
+      text: I18n.t("%1 öğe").arg(island.shelf.count)
+      font.pixelSize: 14
+      strong: true
+      color: Theme.blue
+      Accessible.name: I18n.t("Raf, ") + text
+    }
+  }
+
   // ---------------------------------------------------------------- timer
   Page {
     anchors.fill: parent

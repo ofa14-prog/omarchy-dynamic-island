@@ -49,10 +49,18 @@ Page {
       Label {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: !island.dragHover
-        text: I18n.t("Daha sonra istediğin uygulamaya geri sürükle")
+        text: I18n.t("ya da tıkla: kopyaladığını rafa ekle")
         font.pixelSize: 12
         color: Theme.tertiary
       }
+    }
+    MouseArea {
+      anchors.fill: parent
+      enabled: shelf.count === 0 && !island.dragHover
+      cursorShape: Qt.PointingHandCursor
+      onClicked: shelf.addFromClipboard()
+      Accessible.role: Accessible.Button
+      Accessible.name: I18n.t("Panodakini rafa ekle")
     }
   }
 
@@ -195,6 +203,14 @@ Page {
     anchors.horizontalCenter: parent.horizontalCenter
     visible: shelf.count > 0
     spacing: 8
+    IslandButton {
+      size: 32
+      icon: "plus"
+      text: I18n.t("Panodan ekle")
+      fontSize: 13
+      accessibleName: I18n.t("Panodakini rafa ekle")
+      onClicked: shelf.addFromClipboard()
+    }
     IslandButton {
       size: 32
       icon: "copy"

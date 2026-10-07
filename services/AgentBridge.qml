@@ -633,6 +633,55 @@ Item {
     }
   }
 
+  // ---------------------------------------------------------------- live preview
+
+  // The agent page's terminal-style feed: the last prompts, replies, tool
+  // calls and their output, summarised from the session's transcript by
+  // bin/dynamic-island-transcript. Claude Code and Codex only, the two that
+  // hand their hooks a transcript path. It is read only while someone looks
+  // at it (`previewId` is set by the agent page while it is open).
+  readonly property var previewAgents: ["claude", "codex"]
+  property string previewId: ""
+  property var previewItems: []
+  property string previewOf: ""        // session the items belong to
+
+  function canPreview(s) { return !!s && !!s.transcript && previewAgents.indexOf(s.agent) !== -1 }
+
+  onPreviewIdChanged: {
+    if (previewOf !== previewId) previewItems = []
+    previewFeed.restart()
+  }
+
+  Process {
+    id: previewProbe
+    property string forId: ""
+    stdout: StdioCollector {
+      onStreamFinished: {
+        if (previewProbe.forId !== bridge.previewId) return
+        try {
+          var items = JSON.parse(text)
+          if (Array.isArray(items) && JSON.stringify(items) !== JSON.stringify(bridge.previewItems)) bridge.previewItems = items
+          bridge.previewOf = previewProbe.forId
+        } catch (e) {}
+      }
+    }
+  }
+
+  Timer {
+    id: previewFeed
+    interval: 1200
+    repeat: true
+    triggeredOnStart: true
+    running: bridge.previewId !== ""
+    onTriggered: {
+      var s = bridge.sessions[bridge.previewId]
+      if (!bridge.canPreview(s) || previewProbe.running) return
+      previewProbe.forId = s.id
+      previewProbe.command = [bridge.pluginDir + "/bin/dynamic-island-transcript", s.agent, s.transcript, "12"]
+      previewProbe.running = true
+    }
+  }
+
   // ---------------------------------------------------------------- actions
 
   function focusTerminal(session) {

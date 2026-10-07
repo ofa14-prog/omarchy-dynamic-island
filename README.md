@@ -29,11 +29,16 @@ right from the island.
 - **Agent**: follows Omarchy's default agent (`omarchy default agent …`): its name, mark, colors and
   spinner. Every session, what it is doing right now, elapsed time; jump to its terminal, open its
   folder in your editor, start a new session.
+- **Live feed** (Claude Code, Codex): under the sessions, the last prompts, replies, tool calls and
+  their output, drawn the way the agent's terminal draws them. With several sessions, click a row
+  to watch that one; click the feed to jump to its terminal.
 - **Permissions**: tool, file or command, colored diff; **Allow / Always / Deny**. The agent races
   the island against its own terminal prompt: answer in either place, the other one closes.
 - **Timer**: countdown (+1 min, pause, repeat) and stopwatch, with a chime when time is up.
 - **Screen recording**: Omarchy's recorder shows as the red recording activity; click to stop.
-- **Shelf**: drop files on the island to park them, drag them back out into any app later.
+- **Shelf**: drop files on the island to park them, drag them back out into any app later. While
+  it holds anything, a shelf bubble shows how many items and how full it is; click the bubble to
+  put what you copied on the shelf (files from Files, or a copied image or text, saved as a file).
 - Claude Code's own spinner (`· ✢ * ✶ ✻ ✽`) and status shimmer, captured from a live `claude`
   session; other agents use their CLI's braille spinner.
 - Sharp at fractional scaling: text is hinted and icons are rasterized at the screen's real pixel
@@ -63,7 +68,7 @@ Headless runs (`claude -p`, SDK scripts) never show up as sessions or banners.
 | Scroll on the compact island | Volume |
 | Drag a file onto it | Opens the shelf |
 | Pointer leaves | Closes after 650 ms (not while an alert is waiting) |
-| Bubble: click | Open that activity |
+| Bubble: click | Open that activity (shelf bubble: add the clipboard to the shelf) |
 | Bubble: double-click (or right-click) | Swap it with the center: it moves into the island, the center takes its place |
 | Bubble: middle-click | Play / pause music, pause / resume the timer |
 

@@ -18,6 +18,55 @@ Page {
   readonly property bool connectable: profile.integration !== "none"
   readonly property bool connected: agents.hooksInstalled
 
+  // ---- live preview (Claude Code and Codex)
+  // Follows the focused session; with several, click a row to watch it.
+  property string pickedId: ""
+  readonly property var previewSession: {
+    void agents.revision
+    var picked = agents.sessions[pickedId]
+    if (agents.canPreview(picked)) return picked
+    if (agents.canPreview(agents.focusSession)) return agents.focusSession
+    return sessions.find(x => agents.canPreview(x)) || null
+  }
+  Binding {
+    target: page.agents
+    property: "previewId"
+    value: page.shown && page.previewSession ? page.previewSession.id : ""
+  }
+
+  // Transcript items → terminal lines, drawn the way the agent's own CLI
+  // draws them: "● Bash(…)" / "  ⎿ output" for Claude Code, "•" / "└" for Codex.
+  function feedLines(items, agent, busy) {
+    var codex = agent === "codex"
+    var out = []
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i]
+      var next = items[i + 1]
+      switch (it.k) {
+        case "prompt":
+          out.push({ g: codex ? "›" : ">", t: it.t, c: Theme.tertiary })
+          break
+        case "text":
+          it.t.split("\n").forEach((l, j) => out.push({ g: j === 0 ? (codex ? "•" : "●") : "", t: l, c: Theme.fg }))
+          break
+        case "tool": {
+          // Green / red once its output is in; orange while it still runs.
+          var tone = !it.done ? (busy ? Theme.orange : Theme.tertiary)
+            : next && next.k === "result" && next.err ? Theme.red : Theme.green
+          out.push({ g: codex ? "•" : "●", t: it.t + (it.d ? "(" + it.d + ")" : ""), c: Theme.fg, gc: tone, strong: true })
+          break
+        }
+        case "result":
+          it.t.split("\n").forEach((l, j) => out.push({ g: j === 0 ? (codex ? "└" : "⎿") : "", t: l, c: it.err ? Theme.red : Theme.secondary, indent: true }))
+          break
+        case "interrupt":
+          out.push({ g: codex ? "└" : "⎿", t: I18n.t("Kullanıcı tarafından kesildi"), c: Theme.red, indent: true })
+          break
+      }
+    }
+    return out.slice(-9)
+  }
+
   function working(s) {
     var st = agents.displayState(s)
     return st === "thinking" || st === "tool" || st === "compacting"
@@ -128,10 +177,13 @@ Page {
           required property var modelData
           readonly property var s: modelData
           readonly property bool waiting: agents.displayState(s) === "waiting"
+          // With several sessions, a click picks which one the feed shows.
+          readonly property bool watched: page.sessions.length > 1 && page.previewSession !== null && page.previewSession.id === s.id
+          readonly property bool watchable: page.sessions.length > 1 && !watched && agents.canPreview(s)
           width: parent.width
           height: 58
           radius: 18
-          color: rowMouse.containsMouse ? Theme.fillHover : Theme.fill
+          color: rowMouse.containsMouse || watched ? Theme.fillHover : Theme.fill
           border.width: waiting ? 1 : 0
           border.color: island.profile(s.agent).color
           Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
@@ -141,7 +193,11 @@ Page {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: row.waiting ? island.setPage("permission") : agents.focusTerminal(row.s)
+            onClicked: {
+              if (row.waiting) island.setPage("permission")
+              else if (row.watchable) page.pickedId = row.s.id
+              else agents.focusTerminal(row.s)
+            }
           }
 
           Accessible.role: Accessible.ListItem
@@ -229,6 +285,132 @@ Page {
             }
           }
         }
+      }
+    }
+
+    // ---- live feed
+    Rectangle {
+      id: feed
+      readonly property var s: page.previewSession
+      readonly property bool busy: s !== null && agents.isBusy(s)
+      readonly property var lines: page.feedLines(s && agents.previewOf === s.id ? agents.previewItems : [], s ? s.agent : "", busy)
+      visible: s !== null
+      width: parent.width
+      height: 168
+      radius: 16
+      color: Qt.rgba(1, 1, 1, 0.05)
+      border.width: 1
+      border.color: Theme.hairline
+
+      Accessible.role: Accessible.StaticText
+      Accessible.name: I18n.t("Canlı akış") + ": " + lines.map(l => l.t).join(". ")
+
+      Row {
+        id: feedHead
+        x: 14
+        y: 10
+        spacing: 7
+        Rectangle {
+          anchors.verticalCenter: parent.verticalCenter
+          width: 6; height: 6; radius: 3
+          color: feed.busy ? island.profile(feed.s ? feed.s.agent : "").color : Theme.tertiary
+          SequentialAnimation on opacity {
+            running: feed.busy && page.shown && !Theme.reduceMotion
+            loops: Animation.Infinite
+            onRunningChanged: if (!running) parent.opacity = 1
+            NumberAnimation { to: 0.3; duration: 650; easing.type: Easing.InOutSine }
+            NumberAnimation { to: 1; duration: 650; easing.type: Easing.InOutSine }
+          }
+        }
+        Label {
+          anchors.verticalCenter: parent.verticalCenter
+          text: I18n.t("Canlı akış") + (feed.s && feed.s.project ? " · " + feed.s.project : "")
+          font.pixelSize: 11
+          color: Theme.tertiary
+        }
+      }
+
+      // Newest at the bottom; older lines scroll off under the header.
+      Item {
+        anchors.top: feedHead.bottom
+        anchors.topMargin: 6
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 10
+        anchors.left: parent.left
+        anchors.leftMargin: 14
+        anchors.right: parent.right
+        anchors.rightMargin: 14
+        clip: true
+
+        Label {
+          visible: feed.lines.length === 0
+          anchors.centerIn: parent
+          text: I18n.t("Henüz bir şey yok")
+          font.pixelSize: 12
+          color: Theme.tertiary
+        }
+
+        Column {
+          anchors.bottom: parent.bottom
+          width: parent.width
+          spacing: 2
+          Repeater {
+            model: feed.lines
+            delegate: Item {
+              required property var modelData
+              width: parent.width
+              height: 15
+              Item {
+                id: glyph
+                x: modelData.indent ? 12 : 0
+                width: 14
+                height: parent.height
+                // Bullets are drawn, not typed: fonts disagree on ● and ⏺.
+                readonly property bool dot: modelData.g === "●" || modelData.g === "•"
+                Rectangle {
+                  visible: glyph.dot
+                  anchors.verticalCenter: parent.verticalCenter
+                  x: 1
+                  width: modelData.g === "●" ? 7 : 5
+                  height: width
+                  radius: width / 2
+                  color: modelData.gc || modelData.c
+                }
+                Text {
+                  visible: !glyph.dot
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: modelData.g
+                  color: modelData.gc || modelData.c
+                  font.family: Theme.mono
+                  font.pixelSize: 11
+                  renderType: Text.NativeRendering
+                }
+              }
+              Text {
+                anchors.left: glyph.right
+                anchors.leftMargin: 3
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                text: modelData.t
+                color: modelData.c
+                elide: Text.ElideRight
+                textFormat: Text.PlainText
+                font.family: Theme.mono
+                font.pixelSize: 12
+                font.weight: modelData.strong ? Font.DemiBold : Font.Normal
+                renderType: Text.NativeRendering
+              }
+            }
+          }
+        }
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: { agents.focusTerminal(feed.s); island.collapse() }
+        Accessible.role: Accessible.Button
+        Accessible.name: I18n.t("Terminale git")
       }
     }
 

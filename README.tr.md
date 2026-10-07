@@ -28,11 +28,16 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   sağ tık tüm Omarchy kabuğunu yeniden başlatır.
 - **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
   spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
+- **Canlı akış** (Claude Code, Codex): oturumların altında son istekler, yanıtlar, araç çağrıları ve
+  çıktıları, ajanın kendi terminalindeki gibi. Birden çok oturumda izlemek istediğinize tıklayın;
+  akışa tıklamak terminaline götürür.
 - **İzinler**: araç, dosya/komut, renkli diff; **İzin ver / Her zaman / Reddet**. Ada, ajanın terminal
   sorusuyla yarışır: hangisinden cevap verirseniz diğeri kapanır.
 - **Sayaç**: geri sayım (+1 dk, duraklat, tekrarla) ve kronometre; süre dolunca ses.
 - **Ekran kaydı**: Omarchy kaydı kırmızı kayıt etkinliği olarak görünür; tıklayınca durur.
-- **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin.
+- **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin. Rafta bir şey
+  varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir; yuvarlağa
+  tıklamak kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan görsel/metin).
 - Claude Code'un kendi spinner'ı (`· ✢ * ✶ ✻ ✽`) ve durum parlaması canlı bir `claude` oturumundan
   alındı; diğer ajanlar kendi CLI'larının braille spinner'ını kullanır.
 - Kesirli ölçekte keskin: yazılar piksele hizalı, ikonlar ekranın gerçek piksel yoğunluğunda çizilir.

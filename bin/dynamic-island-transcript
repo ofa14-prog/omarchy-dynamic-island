@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""Summarise the end of a coding agent's transcript for the island's live
+preview: the last prompts, replies, tool calls and their output, the way the
+agent's own terminal shows them.
+
+  dynamic-island-transcript <claude|codex> <transcript.jsonl> [count]
+
+Prints one JSON array: [{"k": kind, "t": text, "d": detail, "err": bool}]
+  kind  prompt | text | tool | result | interrupt
+Only the file's tail is read, so it stays cheap on long sessions.
+"""
+
+import json
+import os
+import sys
+
+CHUNK = 512 * 1024
+MAX_BYTES = 16 * 1024 * 1024
+
+
+HOME = os.path.expanduser("~")
+
+
+def one_line(s, limit=220):
+    s = " ".join(str(s or "").split()).replace(HOME + "/", "~/")
+    return s if len(s) <= limit else s[: limit - 1] + "…"
+
+
+def first_lines(s, n=2, limit=200):
+    lines = [l.rstrip() for l in str(s or "").replace("\r", "").split("\n")]
+    lines = [l for l in lines if l.strip()]
+    out = [one_line(l, limit) for l in lines[:n]]
+    if len(lines) > n:
+        out.append(f"… +{len(lines) - n}")
+    return "\n".join(out)
+
+
+def text_of(content):
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(p.get("text", "") for p in content if isinstance(p, dict) and isinstance(p.get("text"), str))
+    return ""
+
+
+def tool_args(inp):
+    if not isinstance(inp, dict):
+        return one_line(inp, 160)
+    for key in ("command", "file_path", "path", "pattern", "url", "query", "description", "prompt", "skill"):
+        v = inp.get(key)
+        if isinstance(v, list):
+            v = " ".join(map(str, v))
+        if isinstance(v, str) and v.strip():
+            return one_line(v, 160)
+    for v in inp.values():
+        if isinstance(v, str) and v.strip():
+            return one_line(v, 160)
+    return ""
+
+
+def attach(items, tools, call_id, result):
+    """Put a tool's output right under its call (parallel calls finish out
+    of order), or at the end when the call scrolled out of the tail."""
+    tool = tools.get(call_id)
+    if tool is not None and "res" not in tool:
+        tool["res"] = result
+    else:
+        items.append(result)
+
+
+def flatten(items):
+    out = []
+    for it in items:
+        res = it.pop("res", None)
+        if it["k"] == "tool":
+            it["done"] = res is not None
+        out.append(it)
+        if res is not None:
+            out.append(res)
+    return out
+
+
+# ---------------------------------------------------------------- Claude Code
+
+def claude(entries):
+    items, tools = [], {}
+    for e in entries:
+        t = e.get("type")
+        if t not in ("user", "assistant") or e.get("isMeta") or e.get("isCompactSummary"):
+            continue
+        content = (e.get("message") or {}).get("content")
+        if t == "user":
+            if isinstance(content, str):
+                parts = [{"type": "text", "text": content}]
+            else:
+                parts = content if isinstance(content, list) else []
+            for p in parts:
+                if not isinstance(p, dict):
+                    continue
+                if p.get("type") == "tool_result":
+                    out = p.get("content")
+                    if isinstance(out, list) and any(isinstance(c, dict) and c.get("type") == "image" for c in out):
+                        out = "[image]"
+                    out = text_of(out) if not isinstance(out, str) else out
+                    attach(items, tools, p.get("tool_use_id"),
+                           {"k": "result", "t": first_lines(out) or "(no output)", "err": bool(p.get("is_error"))})
+                elif p.get("type") == "text":
+                    s = p.get("text", "")
+                    if s.startswith("[Request interrupted by user"):
+                        items.append({"k": "interrupt", "t": "Interrupted"})
+                    elif s.startswith("<command-name>"):
+                        name = s.split("<command-name>", 1)[1].split("</command-name>", 1)[0]
+                        items.append({"k": "prompt", "t": one_line(name)})
+                    elif s.startswith("<"):
+                        continue          # hook output, reminders, local command output
+                    elif s.strip():
+                        items.append({"k": "prompt", "t": one_line(s)})
+        else:
+            for p in content if isinstance(content, list) else []:
+                if not isinstance(p, dict):
+                    continue
+                if p.get("type") == "text" and p.get("text", "").strip():
+                    items.append({"k": "text", "t": first_lines(p["text"], 2, 220)})
+                elif p.get("type") == "tool_use":
+                    tool = {"k": "tool", "t": p.get("name", "Tool"), "d": tool_args(p.get("input"))}
+                    tools[p.get("id")] = tool
+                    items.append(tool)
+    return flatten(items)
+
+
+# ---------------------------------------------------------------- Codex
+
+def codex_output(raw):
+    if isinstance(raw, dict):
+        raw = raw.get("content") or raw.get("output") or ""
+    s = str(raw or "")
+    err = False
+    try:
+        obj = json.loads(s)
+        if isinstance(obj, dict):
+            code = (obj.get("metadata") or {}).get("exit_code")
+            err = isinstance(code, int) and code != 0
+            s = obj.get("output", s)
+    except ValueError:
+        if s.startswith("Exit code:"):
+            head = s.split("\n", 1)[0]
+            err = head.strip() != "Exit code: 0"
+            s = s.split("Output:", 1)[1] if "Output:" in s else s
+    return s, err
+
+
+def codex(entries):
+    items, tools = [], {}
+    for e in entries:
+        if e.get("type") != "response_item":
+            continue
+        p = e.get("payload") or {}
+        pt = p.get("type")
+        if pt == "message":
+            s = text_of(p.get("content"))
+            if p.get("role") == "user":
+                if s.startswith("<") or not s.strip():
+                    continue          # environment context and instructions
+                items.append({"k": "prompt", "t": one_line(s)})
+            elif p.get("role") == "assistant" and s.strip():
+                items.append({"k": "text", "t": first_lines(s, 2, 220)})
+        elif pt in ("function_call", "custom_tool_call"):
+            args = p.get("arguments") if pt == "function_call" else p.get("input")
+            try:
+                args = json.loads(args) if isinstance(args, str) and pt == "function_call" else args
+            except ValueError:
+                pass
+            name = p.get("name", "tool")
+            if name == "apply_patch" and isinstance(args, str):
+                files = [l.split(":", 1)[1].strip() for l in args.split("\n") if l.startswith("*** ") and ":" in l]
+                tool = {"k": "tool", "t": "Edit", "d": one_line(", ".join(files), 160)}
+            else:
+                tool = {"k": "tool", "t": "Bash" if name in ("shell", "exec_command", "container.exec") else name,
+                        "d": tool_args(args)}
+            tools[p.get("call_id")] = tool
+            items.append(tool)
+        elif pt == "local_shell_call":
+            tool = {"k": "tool", "t": "Bash", "d": tool_args((p.get("action") or {}))}
+            tools[p.get("call_id")] = tool
+            items.append(tool)
+        elif pt in ("function_call_output", "custom_tool_call_output"):
+            out, err = codex_output(p.get("output"))
+            attach(items, tools, p.get("call_id"), {"k": "result", "t": first_lines(out) or "(no output)", "err": err})
+    return flatten(items)
+
+
+def main():
+    if len(sys.argv) < 3:
+        raise SystemExit(__doc__)
+    agent, path = sys.argv[1], sys.argv[2]
+    count = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+    parse = codex if agent == "codex" else claude
+    # Step back from the end until there is enough to show: a pasted image
+    # or a long tool output can make a single entry megabytes long.
+    items, lines, rest = [], [], b""
+    try:
+        with open(path, "rb") as f:
+            pos = f.seek(0, os.SEEK_END)
+            read = 0
+            while pos > 0 and read < MAX_BYTES:
+                step = min(CHUNK, pos)
+                pos -= step
+                f.seek(pos)
+                block = f.read(step) + rest
+                read += step
+                parts = block.split(b"\n")
+                rest = parts[0] if pos > 0 else b""    # may be cut: finish it next round
+                fresh = []
+                for raw in parts[1:] if pos > 0 else parts:
+                    if raw.strip():
+                        try:
+                            fresh.append(json.loads(raw))
+                        except ValueError:
+                            pass
+                lines = fresh + lines
+                items = parse([dict(e) for e in lines])
+                if len(items) >= count:
+                    break
+    except OSError:
+        pass
+    print(json.dumps(items[-count:], ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

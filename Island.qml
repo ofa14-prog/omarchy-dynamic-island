@@ -41,6 +41,8 @@ import "components/Agents.js" as Agents
 //   charger plugged in (settled 1.5 s)       "Charging" banner
 //   screen recording starts/stops            red activity appears/disappears
 //   file dragged over the island             opens the shelf
+//   files on the shelf                       shelf bubble (count + fill ring);
+//                                            clicking it shelves the clipboard
 //   pointer hover / leave                    opens after hoverDelay / closes
 //                                            after collapseDelay
 //
@@ -270,7 +272,21 @@ Item {
     }
   }
 
-  ShelfService { id: shelfSvc }
+  ShelfService {
+    id: shelfSvc
+    onPasted: (added, what) => {
+      if (added > 0) {
+        island.bounce()
+        island.peek("shelf", what === "image" ? I18n.t("Görsel rafa eklendi") : what === "text" ? I18n.t("Metin rafa eklendi")
+          : added === 1 ? I18n.t("Rafa eklendi") : I18n.t("%1 dosya rafa eklendi").arg(added),
+          I18n.t("Rafta %1 öğe").arg(shelfSvc.count), Theme.blue, 1600, "shelf")
+      } else if (what === "known") {
+        island.peek("shelf", I18n.t("Zaten rafta"), "", Theme.secondary, 1300, "shelf")
+      } else {
+        island.openPage("shelf", "pointer")
+      }
+    }
+  }
   DefaultApps { id: appsSvc }
   RecordingService { id: recordingSvc }
 
@@ -337,14 +353,16 @@ Item {
       else if (k === "timer" && timer.active) out.push(k)
       else if (k === "music" && musicLive) out.push(k)
       else if (k === "recording" && recording.active) out.push(k)
+      else if (k === "shelf" && shelf.count > 0) out.push(k)
     }
     // Activities missing from a user's custom priority still show, last.
-    var all = ["agent", "recording", "timer", "music"]
+    var all = ["agent", "recording", "timer", "music", "shelf"]
     for (var j = 0; j < all.length; j++) {
       var a = all[j]
       if (out.indexOf(a) !== -1 || order.indexOf(a) !== -1) continue
       if ((a === "agent" && (agents.live || recentlyFinished)) || (a === "timer" && timer.active)
-          || (a === "music" && musicLive) || (a === "recording" && recording.active)) out.push(a)
+          || (a === "music" && musicLive) || (a === "recording" && recording.active)
+          || (a === "shelf" && shelf.count > 0)) out.push(a)
     }
     return out
   }
@@ -360,10 +378,12 @@ Item {
   // activity that ends just leaves its slot (the others close up), a new one
   // takes the next free slot. Once nothing is live the arrangement resets.
   property var arrangement: []
+  // The shelf is a side bubble: alone, it leaves the center to the clock
+  // ("idle") unless you double-click it into the middle.
   readonly property var slots: {
-    if (arrangement.length === 0) return live
     var out = arrangement.filter(k => live.indexOf(k) !== -1)
     for (var i = 0; i < live.length; i++) if (out.indexOf(live[i]) === -1) out.push(live[i])
+    if (out.length === 1 && out[0] === "shelf" && arrangement[0] !== "shelf") out.unshift("idle")
     return out
   }
   onLiveChanged: if (live.length === 0 && arrangement.length) arrangement = []
@@ -378,8 +398,8 @@ Item {
   }
 
   readonly property string primary: slots.length ? slots[0] : "idle"
-  readonly property string secondary: slots.length > 1 ? slots[1] : ""
-  readonly property string tertiary: slots.length > 2 ? slots[2] : ""
+  readonly property string secondary: slots.length > 1 && slots[1] !== "idle" ? slots[1] : ""
+  readonly property string tertiary: slots.length > 2 && slots[2] !== "idle" ? slots[2] : ""
 
   // ================================================================ state
 
