@@ -984,22 +984,19 @@ Item {
           Item {
             id: musicBackdrop
             anchors.fill: parent
-            // Shown only on a settled, open card: it appears once the island
-            // has finished opening and vanishes the instant it starts to
-            // close, so it never draws over the shape while it morphs.
-            property bool settled: false
+            // Opening onto the music page, the colors come in with the card
+            // as it grows (no black first). Between tabs they cross-fade
+            // quickly. Closing, they vanish at once, so nothing is drawn
+            // while the card shrinks into the compact island.
             readonly property bool expanded: island.mode === "expanded"
-            onExpandedChanged: { settled = false; if (expanded) settleTimer.restart() }
-            Timer { id: settleTimer; interval: 420; onTriggered: musicBackdrop.settled = musicBackdrop.expanded }
-            readonly property bool on: island.cfg("ambient") && expanded && settled
+            readonly property bool on: island.cfg("ambient") && expanded
               && island.page === "music" && island.music.available
             readonly property bool moving: on && !Theme.reduceMotion
             opacity: on ? 1 : 0
             visible: opacity > 0.005
-            // Between tabs: a slow, soft cross-fade. Closing: no fade at all.
             Behavior on opacity {
-              enabled: musicBackdrop.expanded && musicBackdrop.settled
-              NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutSine }
+              enabled: musicBackdrop.expanded
+              NumberAnimation { duration: Theme.ms(280); easing.type: Easing.OutCubic }
             }
 
             property color c1: Qt.darker(island.music.ambient[0], 1.5)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.2
+
+- Music backdrop: opening onto the music page brings the colors in with the card (no black
+  first, no pop); tab switches cross-fade quickly (280 ms, ease-out).
+
 ## 1.8.1
 
 - Music backdrop: no more square-cornered color block while the island morphs (the blur drew
