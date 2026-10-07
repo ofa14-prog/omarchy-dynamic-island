@@ -33,7 +33,7 @@ Item {
       cat > "$1" <<'CONF'
 [general]
 bars = 12
-framerate = 45
+framerate = 30
 autosens = 1
 lower_cutoff_freq = 40
 higher_cutoff_freq = 10000
