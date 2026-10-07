@@ -4,6 +4,15 @@
 .pragma library
 
 var en = {
+  "Bar'ın ortası dolu": "The bar's center is taken",
+  "Öğeler sağa taşınır, geri alınabilir": "Its items move right; undoable",
+  "Önerilen: Islands bar": "Recommended: Islands bar",
+  "Ada onunla tasarlandı, geri alınabilir": "Made for the island; undoable",
+  "Kur": "Set up",
+  "Islands bar'ı kur ve bar'ın ortasını boşalt": "Install the Islands bar and clear the bar's center",
+  "Yer aç": "Make room",
+  "Bar'ın ortasındaki öğeleri sağa taşı": "Move the bar's center items to the right",
+  "Bir daha gösterme": "Don't show again",
   "Rafta: %1": "On the shelf: %1",
   "Terminal": "Terminal",
   "Dil": "Language",
@@ -164,6 +173,15 @@ var en = {
 }
 
 var es = {
+  "Bar'ın ortası dolu": "El centro de la barra está ocupado",
+  "Öğeler sağa taşınır, geri alınabilir": "Sus elementos van a la derecha",
+  "Önerilen: Islands bar": "Recomendado: barra Islands",
+  "Ada onunla tasarlandı, geri alınabilir": "La isla está hecha para ella",
+  "Kur": "Instalar",
+  "Islands bar'ı kur ve bar'ın ortasını boşalt": "Instalar la barra Islands y vaciar el centro",
+  "Yer aç": "Hacer sitio",
+  "Bar'ın ortasındaki öğeleri sağa taşı": "Mover a la derecha los elementos del centro de la barra",
+  "Bir daha gösterme": "No volver a mostrar",
   "Rafta: %1": "En el estante: %1",
   "Terminal": "Terminal",
   "Dil": "Idioma",
@@ -324,6 +342,15 @@ var es = {
 }
 
 var ru = {
+  "Bar'ın ortası dolu": "Центр панели занят",
+  "Öğeler sağa taşınır, geri alınabilir": "Элементы уйдут вправо, обратимо",
+  "Önerilen: Islands bar": "Рекомендуется: панель Islands",
+  "Ada onunla tasarlandı, geri alınabilir": "Создана для острова; обратимо",
+  "Kur": "Установить",
+  "Islands bar'ı kur ve bar'ın ortasını boşalt": "Установить панель Islands и освободить центр",
+  "Yer aç": "Освободить",
+  "Bar'ın ortasındaki öğeleri sağa taşı": "Перенести элементы из центра панели вправо",
+  "Bir daha gösterme": "Больше не показывать",
   "Rafta: %1": "На полке: %1",
   "Terminal": "Терминал",
   "Dil": "Язык",

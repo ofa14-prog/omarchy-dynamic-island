@@ -103,6 +103,11 @@ ve bar'da yer açmak ayrı, açık adımlardır (aşağıda) ve ikisi de geri al
 
 ## Kurulum
 
+Ada, [Islands](https://github.com/DanielLob-o/Islands) bar (`lobo.islands`) ve ortası boş bir bar
+ile tasarlandı. Başka bir bar'da ya da bar'ın ortası doluysa adanın Ana sayfasında **Kur** kartı
+çıkar ve bu düzeni tek tıkla kurar (önceki düzen yedeklenir; `dynamic-island-bar-setup --undo`
+geri alır). Siz basmadan hiçbir şey değişmez.
+
 ```sh
 omarchy plugin add https://github.com/ofa14-prog/omarchy-dynamic-island.git
 omarchy plugin enable io.github.ofa14-prog.dynamic-island

@@ -4,7 +4,15 @@
 #   dynamic-island-bar-setup          move every center-section widget to the
 #                                      start of the right section (the island
 #                                      shows the clock while idle)
-#   dynamic-island-bar-setup --undo   restore the bar layout saved before
+#   dynamic-island-bar-setup --recommended
+#                                      the setup the island is designed for:
+#                                      switch to the Islands bar (lobo.islands,
+#                                      https://github.com/DanielLob-o/Islands,
+#                                      listed on plugins.omarchy.org; added with
+#                                      `omarchy plugin add` if missing), then
+#                                      clear the center as above
+#   dynamic-island-bar-setup --undo   restore the bar layout (and bar) saved
+#                                      before
 #
 # The previous ~/.config/omarchy/shell.json is kept next to it as
 # shell.json.bak.dynamic-island.
@@ -43,6 +51,17 @@ layout=$config
 [[ -f $layout ]] || { echo "Could not find the bar layout" >&2; exit 1; }
 
 [[ -f $config && ! -e $backup && ! -L $backup ]] && safe_copy "$config" "$backup"
+
+if [[ ${1:-} == "--recommended" ]]; then
+  if omarchy plugin list --json | jq -e '.[] | select(.id == "lobo.islands")' >/dev/null; then
+    omarchy plugin enable lobo.islands >/dev/null
+  else
+    omarchy plugin add https://github.com/DanielLob-o/Islands.git --enable --yes >/dev/null
+  fi
+  echo "Switched to the Islands bar"
+  # The layout file may only exist now.
+  [[ -f $config ]] && layout=$config
+fi
 
 mapfile -t center < <(jq -r '.bar.layout.center[]?.id // empty' "$layout")
 if ((${#center[@]} == 0)); then

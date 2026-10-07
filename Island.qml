@@ -188,6 +188,43 @@ Item {
   // Built-in shortcuts follow the system defaults (agent, editor, browser,
   // file manager, terminal) and show each app's own icon. `shortcuts` in the
   // config replaces them.
+  // ---- bar center
+  // The island sits over the middle of the bar. Omarchy's stock layout keeps
+  // widgets there (clock, indicators, weather…), so the Home page offers to
+  // move them to the right (bin/dynamic-island-bar-setup: `omarchy bar move`,
+  // backed up, `--undo` restores). Nothing moves until that button is pressed.
+  // It is designed with the Islands bar (lobo.islands); on another bar the
+  // same card offers that setup ("--recommended"), which the user can undo.
+  property int barCenterCount: 0
+  property string activeBar: ""
+  readonly property bool onIslandsBar: activeBar === "lobo.islands"
+  readonly property bool barHint: activeBar !== "" && (!onIslandsBar || barCenterCount > 0)
+    && cfg("barHintDismissed") !== true
+  Process {
+    id: barCenterProbe
+    running: true
+    command: ["sh", "-c",
+      "f=\"$HOME/.config/omarchy/shell.json\"; [ -f \"$f\" ] || f=\"${OMARCHY_PATH:-/usr/share/omarchy}/config/omarchy/shell.json\"; " +
+      "printf '%s\\n' \"$(jq -r '.bar.layout.center | length' \"$f\" 2>/dev/null)\"; " +
+      "omarchy plugin list --json 2>/dev/null | jq -r '[.[] | select(.enabled and ((.kinds // []) | index(\"bar\")))][0].id // \"\"' | head -c 256"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var lines = text.split("\n")
+        island.barCenterCount = parseInt(lines[0]) || 0
+        island.activeBar = (lines[1] || "").trim()
+      }
+    }
+  }
+  Process {
+    id: barSetup
+    onExited: barCenterProbe.running = true
+  }
+  function makeRoomInBar() {
+    if (barSetup.running) return
+    barSetup.command = [pluginDir + "/bin/dynamic-island-bar-setup"].concat(onIslandsBar ? [] : ["--recommended"])
+    barSetup.running = true
+  }
+
   readonly property var shortcuts: {
     var list = cfg("shortcuts")
     if (list && list.length) return list
@@ -651,7 +688,9 @@ Item {
     if (typeof v === "number" && v > 0) return v
     if (!barGeom) return 34
     // Floating "island" bars leave a gap above their pills: match the pill.
-    return barGeom.h >= 40 ? Math.min(38, barGeom.h - 7) : Math.max(30, barGeom.h - 2)
+    // Slim bars (Omarchy's stock bar is 26–30 px): a little air above and
+    // below so the island floats in the bar instead of filling it.
+    return barGeom.h >= 40 ? Math.min(38, barGeom.h - 7) : Math.max(22, barGeom.h - 4)
   }
   readonly property int topY: {
     var v = cfg("topOffset")

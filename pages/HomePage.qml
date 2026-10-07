@@ -133,6 +133,68 @@ Page {
       }
     }
 
+    // ---- the bar's center is under the island: offer to make room
+    Rectangle {
+      visible: island.barHint
+      width: parent.width
+      height: 52
+      radius: 18
+      color: Theme.fill
+      Icon {
+        id: barIcon
+        x: 14
+        anchors.verticalCenter: parent.verticalCenter
+        name: "sparkles"
+        size: 18
+        color: Theme.secondary
+      }
+      Column {
+        anchors.left: barIcon.right
+        anchors.leftMargin: 12
+        anchors.right: barButtons.left
+        anchors.rightMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 1
+        Label {
+          width: parent.width
+          text: island.onIslandsBar ? I18n.t("Bar'ın ortası dolu") : I18n.t("Önerilen: Islands bar")
+          font.pixelSize: 13
+          strong: true
+        }
+        Label {
+          width: parent.width
+          text: island.onIslandsBar ? I18n.t("Öğeler sağa taşınır, geri alınabilir") : I18n.t("Ada onunla tasarlandı, geri alınabilir")
+          font.pixelSize: 12
+          color: Theme.secondary
+        }
+      }
+      Row {
+        id: barButtons
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 6
+        IslandButton {
+          size: 34
+          text: island.onIslandsBar ? I18n.t("Yer aç") : I18n.t("Kur")
+          fontSize: 13
+          prominent: true
+          tint: Theme.blue
+          accessibleName: island.onIslandsBar ? I18n.t("Bar'ın ortasındaki öğeleri sağa taşı") : I18n.t("Islands bar'ı kur ve bar'ın ortasını boşalt")
+          onClicked: island.makeRoomInBar()
+        }
+        IslandButton {
+          size: 34
+          icon: "x"
+          iconSize: 14
+          filled: false
+          tint: Theme.secondary
+          accessibleName: I18n.t("Bir daha gösterme")
+          onClicked: island.setConfig("barHintDismissed", true)
+        }
+      }
+    }
+
     // ---- screen recording in progress
     Rectangle {
       visible: island.recording.active

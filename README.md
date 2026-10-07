@@ -113,12 +113,23 @@ omarchy plugin add https://github.com/ofa14-prog/omarchy-dynamic-island.git
 omarchy plugin enable io.github.ofa14-prog.dynamic-island
 ```
 
-Make room in the middle of the bar (moves the center widgets to the right; reversible):
+### Recommended setup
+
+The island is designed for the [Islands](https://github.com/DanielLob-o/Islands) bar
+(`lobo.islands`, also on plugins.omarchy.org) with an empty bar center. On any other bar, or with
+widgets in the center, the island's Home page shows a **Set up** card that does this for you;
+nothing changes until you press it. From a terminal:
 
 ```sh
-~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-bar-setup
-# undo: …/bin/dynamic-island-bar-setup --undo
+~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-bar-setup --recommended
+# only clear the center, keep your bar: …/bin/dynamic-island-bar-setup
+# undo (restores your previous bar and layout): …/bin/dynamic-island-bar-setup --undo
 ```
+
+`--recommended` adds the Islands bar with `omarchy plugin add` if it is missing and switches to
+it, then moves the center widgets to the start of the right section with `omarchy bar move`.
+Your previous `~/.config/omarchy/shell.json` is backed up first. The island also works on
+Omarchy's stock bar.
 
 Connect your agents, either with the **Connect** button on the island's agent page (for the
 default agent) or:

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.0
+
+- Recommended setup: on a bar other than Islands (`lobo.islands`), or with widgets in the bar
+  center, the Home page offers one-click setup (`dynamic-island-bar-setup --recommended`:
+  adds/enables the Islands bar, clears the center, backs up `shell.json`; `--undo` restores).
+  Nothing changes until it is pressed; the card can be dismissed.
+- On slim bars (Omarchy's stock bar) the closed island keeps a small margin instead of filling
+  the bar's height.
+
 ## 1.9.0
 
 - Languages: English (now the default), Spanish, Russian and Turkish, picked from a flag button
