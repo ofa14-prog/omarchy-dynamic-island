@@ -47,6 +47,9 @@ import "components/Agents.js" as Agents
 //   music playing                            ambient glow in the artwork's
 //                                            colors, moving with the sound
 //                                            when cava is installed
+//   shell (re)start                          hidden until the bar is measured,
+//                                            then drops in as a circle and
+//                                            springs open (intro)
 //   files on the shelf                       shelf bubble (count + fill ring);
 //                                            clicking it shelves the clipboard
 //   pointer hover / leave                    opens after hoverDelay / closes
@@ -527,7 +530,7 @@ Item {
   // ---- peek
   property var peekData: ({ icon: "", title: "", subtitle: "", tint: "#ffffff", target: "" })
   function peek(icon, title, subtitle, tint, ms, target) {
-    if (mode === "expanded") return
+    if (mode === "expanded" || !introDone) return
     peekData = { icon: icon, title: title || "", subtitle: subtitle || "", tint: tint || Theme.fg, target: target || "" }
     springMode = "open"
     mode = "peek"
@@ -596,13 +599,17 @@ Item {
               }
             }
           }
-          island.barGeom = found
+          // A bar that is reloading is briefly missing: keep the last fit
+          // rather than snapping to the fallback size.
+          if (found) island.barGeom = found
         } catch (e) {}
       }
     }
   }
   Timer {
-    interval: 10000
+    // Right after a shell (re)start the bar may not exist yet: look again
+    // quickly until it does, then only now and then.
+    interval: island.barGeom ? 10000 : 300
     repeat: true
     running: true
     triggeredOnStart: true
@@ -626,6 +633,42 @@ Item {
     return barGeom.h >= 40 ? barGeom.y + barGeom.h - compactH - 1
       : barGeom.y + Math.max(0, Math.round((barGeom.h - compactH) / 2))
   }
+  // ---- intro
+  // The island stays hidden until it knows where the bar is (so it never
+  // shows at a wrong, squashed size), then drops in from above the screen as
+  // a small circle and springs open into the island.
+  //   hidden → drop (circle falls into place) → done (morphs to full width)
+  readonly property bool geometryKnown: barGeom !== null
+    || (typeof cfg("compactHeight") === "number" && typeof cfg("topOffset") === "number")
+  property string intro: "hidden"
+  readonly property bool introDone: intro === "done"
+  property real introY: 0
+  onGeometryKnownChanged: if (geometryKnown) introStart.restart()
+  Timer {
+    // Bar never found (none, or a different one): start anyway.
+    interval: 2500
+    running: island.intro === "hidden"
+    onTriggered: introStart.restart()
+  }
+  Timer {
+    id: introStart
+    interval: 120          // let the size settle on the measured bar first
+    onTriggered: {
+      if (island.intro !== "hidden") return
+      if (Theme.reduceMotion) { island.intro = "done"; return }
+      introDrop.from = -(island.topY + island.compactH + 16)
+      island.intro = "drop"
+      introDrop.restart()
+    }
+  }
+  SequentialAnimation {
+    id: introDrop
+    property real from: -60
+    SpringAnimation { target: island; property: "introY"; from: introDrop.from; to: 0; spring: 3.2; damping: 0.32; epsilon: 0.2 }
+    PauseAnimation { duration: 60 }
+    ScriptAction { script: island.intro = "done" }
+  }
+
   readonly property int expandedW: cfg("expandedWidth")
   readonly property bool hovered: hover.hovered
   readonly property int hoverGrowW: mode === "compact" && hovered ? 12 : 0
@@ -642,13 +685,16 @@ Item {
 
   readonly property int expandedChromeH: page === "permission" ? 0 : 52
   readonly property int pageH: pageStack.currentHeight
-  readonly property int targetW: mode === "expanded" ? expandedW
+  readonly property int targetW: !introDone ? compactH
+    : mode === "expanded" ? expandedW
     : mode === "peek" ? Math.min(expandedW, Math.max(320, Math.ceil(peekMetrics.advanceWidth) + 130))
     : liveW + hoverGrowW
-  readonly property int targetH: mode === "expanded" ? expandedChromeH + pageH + 16
+  readonly property int targetH: !introDone ? compactH
+    : mode === "expanded" ? expandedChromeH + pageH + 16
     : mode === "peek" ? 64
     : compactH + hoverGrowH
-  readonly property real targetR: mode === "expanded" ? 34 : mode === "peek" ? 32 : (compactH + hoverGrowH) / 2
+  readonly property real targetR: !introDone ? compactH / 2
+    : mode === "expanded" ? 34 : mode === "peek" ? 32 : (compactH + hoverGrowH) / 2
 
   TextMetrics {
     id: clockMetrics
@@ -800,8 +846,8 @@ Item {
         width: shape.width
         height: shape.height
         x: Math.round((parent.width - width) / 2 + island.shakeX + leanX)
-        y: Math.round(island.topY + island.bounceY)
-        opacity: island.fullscreenHidden ? 0 : 1
+        y: Math.round(island.topY + island.bounceY + island.introY)
+        opacity: island.fullscreenHidden || island.intro === "hidden" ? 0 : 1
         scale: (island.fullscreenHidden ? 0.6 : 1) * pressScale
         transformOrigin: Item.Top
 
@@ -963,7 +1009,7 @@ Item {
           // ---------------------------------------------------- compact
           CompactView {
             anchors.fill: parent
-            shown: island.mode === "compact"
+            shown: island.mode === "compact" && island.introDone
             island: island
           }
 

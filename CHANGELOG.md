@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0
+
+- No more squashed island after a shell restart: it stays hidden until the bar has been
+  measured (re-measured every 300 ms until found), then drops in from above as a circle and
+  springs open into the island. A bar that reloads keeps the last fit instead of the fallback.
+
 ## 1.5.1
 
 - The ambient light glows only around the player: the island when music is in the middle (or

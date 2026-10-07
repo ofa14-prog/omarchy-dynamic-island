@@ -22,7 +22,7 @@ Item {
   property Item anchor               // the island's stage
   property int side: 1
   property string activity: ""
-  readonly property bool shown: activity !== "" && island.mode === "compact" && !island.fullscreenHidden
+  readonly property bool shown: activity !== "" && island.mode === "compact" && !island.fullscreenHidden && island.introDone
   property string kind: activity !== "" ? activity : kind   // keep content while hiding
 
   readonly property int gap: 7
