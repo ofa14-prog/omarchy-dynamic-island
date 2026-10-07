@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.0
+
+- Music page backdrop: open on the music tab, the card fills with the artwork's colors as
+  large blurred blobs drifting slowly (like Apple Music); the outer glow is only for the
+  closed island now. Off with `"ambient": false`.
+
 ## 1.7.1
 
 - Players: the one that starts playing takes over, even over an earlier pick, so switching

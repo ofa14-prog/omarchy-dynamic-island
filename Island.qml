@@ -901,7 +901,9 @@ Item {
           // in a bubble, that bubble glows instead (pages/Bubble.qml).
           readonly property bool here: island.mode === "expanded" ? island.page === "music"
             : island.mode === "compact" && island.primary === "music"
-          opacity: island.ambientOn && here ? (island.mode === "expanded" ? 0.6 : 1) : 0
+          // Open on the music page, the light moves inside the card instead
+          // (musicBackdrop below), so the outer glow steps aside.
+          opacity: island.ambientOn && here && island.mode !== "expanded" ? 1 : 0
           visible: opacity > 0.01
           Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
 
@@ -973,6 +975,120 @@ Item {
           Behavior on radius {
             enabled: !Theme.reduceMotion
             SpringAnimation { spring: Theme.closeSpring; damping: 0.5; epsilon: 0.1 }
+          }
+
+          // Music page backdrop, like Apple Music: the artwork's colors fill
+          // the open card as large, heavily blurred blobs that drift slowly.
+          // Masked to the card's rounded shape; only this layer is rendered
+          // offscreen, the text above stays sharp.
+          Item {
+            id: musicBackdrop
+            anchors.fill: parent
+            readonly property bool on: island.cfg("ambient") && island.mode === "expanded"
+              && island.page === "music" && island.music.available
+            readonly property bool moving: on && !Theme.reduceMotion
+            opacity: on ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: Theme.ms(600); easing.type: Easing.InOutQuad } }
+
+            property color c1: Qt.darker(island.music.ambient[0], 1.5)
+            property color c2: Qt.darker(island.music.ambient[1], 1.5)
+            Behavior on c1 { ColorAnimation { duration: 1500 } }
+            Behavior on c2 { ColorAnimation { duration: 1500 } }
+
+            // Blob positions as fractions of the card, each drifting on its
+            // own slow loop so the pattern never visibly repeats.
+            // Blob positions as fractions of the card, each drifting on its
+            // own slow loop so the pattern never visibly repeats.
+            property real ax: 0.18
+            property real ay: 0.25
+            property real bx: 0.82
+            property real by: 0.7
+            property real cx: 0.5
+            property real cy: 0.9
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: musicBackdrop.moving
+              NumberAnimation { target: musicBackdrop; property: "ax"; to: 0.08; duration: 9000; easing.type: Easing.InOutSine }
+              NumberAnimation { target: musicBackdrop; property: "ax"; to: 0.45; duration: 9000; easing.type: Easing.InOutSine }
+            }
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: musicBackdrop.moving
+              NumberAnimation { target: musicBackdrop; property: "ay"; to: 0.15; duration: 11000; easing.type: Easing.InOutSine }
+              NumberAnimation { target: musicBackdrop; property: "ay"; to: 0.75; duration: 11000; easing.type: Easing.InOutSine }
+            }
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: musicBackdrop.moving
+              NumberAnimation { target: musicBackdrop; property: "bx"; to: 0.92; duration: 10000; easing.type: Easing.InOutSine }
+              NumberAnimation { target: musicBackdrop; property: "bx"; to: 0.5; duration: 10000; easing.type: Easing.InOutSine }
+            }
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: musicBackdrop.moving
+              NumberAnimation { target: musicBackdrop; property: "by"; to: 0.85; duration: 12500; easing.type: Easing.InOutSine }
+              NumberAnimation { target: musicBackdrop; property: "by"; to: 0.2; duration: 12500; easing.type: Easing.InOutSine }
+            }
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: musicBackdrop.moving
+              NumberAnimation { target: musicBackdrop; property: "cx"; to: 0.3; duration: 13000; easing.type: Easing.InOutSine }
+              NumberAnimation { target: musicBackdrop; property: "cx"; to: 0.75; duration: 13000; easing.type: Easing.InOutSine }
+            }
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: musicBackdrop.moving
+              NumberAnimation { target: musicBackdrop; property: "cy"; to: 0.95; duration: 9500; easing.type: Easing.InOutSine }
+              NumberAnimation { target: musicBackdrop; property: "cy"; to: 0.45; duration: 9500; easing.type: Easing.InOutSine }
+            }
+
+            Item {
+              id: blobs
+              anchors.fill: parent
+              visible: false
+              layer.enabled: musicBackdrop.visible
+              // Rendered small and scaled up: blurring a low-resolution
+              // texture gives the very soft, edgeless look.
+              layer.textureSize: Qt.size(Math.max(8, Math.round(width / 8)), Math.max(8, Math.round(height / 8)))
+              layer.smooth: true
+              readonly property real d: Math.max(width, height) * 0.95
+              Rectangle {
+                width: blobs.d; height: width; radius: width / 2
+                x: blobs.width * musicBackdrop.ax - width / 2
+                y: blobs.height * musicBackdrop.ay - height / 2
+                color: musicBackdrop.c1
+              }
+              Rectangle {
+                width: blobs.d * 0.9; height: width; radius: width / 2
+                x: blobs.width * musicBackdrop.bx - width / 2
+                y: blobs.height * musicBackdrop.by - height / 2
+                color: musicBackdrop.c2
+              }
+              Rectangle {
+                width: blobs.d * 0.6; height: width; radius: width / 2
+                x: blobs.width * musicBackdrop.cx - width / 2
+                y: blobs.height * musicBackdrop.cy - height / 2
+                color: Qt.tint(musicBackdrop.c1, Qt.rgba(musicBackdrop.c2.r, musicBackdrop.c2.g, musicBackdrop.c2.b, 0.5))
+              }
+            }
+            Rectangle {
+              id: backdropMask
+              anchors.fill: parent
+              radius: shape.radius
+              visible: false
+              layer.enabled: musicBackdrop.visible
+            }
+            MultiEffect {
+              anchors.fill: parent
+              source: blobs
+              blurEnabled: true
+              blur: 1
+              blurMax: 64
+              maskEnabled: true
+              maskSource: backdropMask
+              opacity: 0.7
+            }
           }
 
           // Background press target: compact/peek expand on click.

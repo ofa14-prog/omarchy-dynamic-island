@@ -47,7 +47,8 @@ right from the island.
   next one, "Automatic" to follow whatever plays.
 - **Ambient light**: while music plays, the artwork's colors glow softly from behind the player,
   like YouTube's ambient mode (left and right take its two most vivid colors). Only the player
-  glows: the island when music is in the middle, otherwise the music bubble. With
+  glows: the island when music is in the middle, otherwise the music bubble. Open on the music
+  tab, the colors fill the card itself and drift slowly, like Apple Music. With
   [cava](https://github.com/karlstav/cava) installed (`sudo pacman -S cava`) the glow breathes with
   the sound; without it, it holds still. Turn off with `"ambient": false` (or just the movement
   with `"ambientAudio": false`).

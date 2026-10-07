@@ -45,7 +45,8 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   geçer, "Otomatik" çalanı izler.
 - **Ambiyans ışığı**: müzik çalarken kapak resminin renkleri oynatıcının arkasından yumuşakça
   süzülür, YouTube'un ambiyans modu gibi (sol ve sağ, en canlı iki rengi alır). Yalnızca oynatıcı
-  parlar: müzik ortadaysa ada, değilse müzik yuvarlağı. `cava` kuruluysa
+  parlar: müzik ortadaysa ada, değilse müzik yuvarlağı. Ada müzik sekmesinde açıkken renkler
+  kartın kendisini doldurur ve yavaşça süzülür, Apple Music gibi. `cava` kuruluysa
   (`sudo pacman -S cava`) ışık sesle birlikte nefes alır; değilse sabit durur. Kapatmak için
   `"ambient": false` (yalnızca hareketi kapatmak için `"ambientAudio": false`).
 - **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin. Rafta bir şey
