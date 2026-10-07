@@ -704,14 +704,24 @@ Item {
     var s = session || focusSession
     var line = String(text || "").replace(/\s*\n\s*/g, " ").trim()
     if (!canMessage(s) || !line || sender.running) return false
+    // The text goes over stdin, never on a command line: process arguments
+    // are visible to every local user.
     sender.forId = s.id
-    sender.command = [pluginDir + "/bin/dynamic-island-send", line].concat((s.pids || []).map(String))
+    sender.text = line.substring(0, 16000)
+    sender.command = [pluginDir + "/bin/dynamic-island-send"].concat((s.pids || []).map(String))
+    sender.stdinEnabled = true
     sender.running = true
     return true
   }
   Process {
     id: sender
     property string forId: ""
+    property string text: ""
+    onStarted: {
+      write(text)
+      text = ""
+      stdinEnabled = false     // closes stdin: the helper sees end of input
+    }
     onExited: code => bridge.messageSent(forId, code === 0)
   }
 

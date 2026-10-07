@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.1
+
+- Privacy: a message typed in the agent message box is never a command-line argument (those are
+  readable by every local user through the process list). The island writes it to
+  `bin/dynamic-island-send` on stdin, which hands it on through stdin as well
+  (`tmux load-buffer -` + `paste-buffer`, `wtype -`). "Copy paths" on the shelf also goes
+  through stdin.
+
 ## 1.10.0
 
 - Recommended setup: on a bar other than Islands (`lobo.islands`), or with widgets in the bar

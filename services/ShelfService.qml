@@ -142,7 +142,16 @@ Item {
   }
   function copyPaths() {
     if (!items.length) return
-    Quickshell.execDetached(["wl-copy", items.map(it => it.path).join("\n")])
+    // Over stdin, not as an argument (arguments are visible to other users).
+    copier.text = items.map(it => it.path).join("\n")
+    copier.stdinEnabled = true
+    copier.running = true
+  }
+  Process {
+    id: copier
+    property string text: ""
+    command: ["wl-copy"]
+    onStarted: { write(text); text = ""; stdinEnabled = false }
   }
   function uriList(list) {
     return (list || items).map(it => "file://" + encodeURI(it.path)).join("\r\n")
