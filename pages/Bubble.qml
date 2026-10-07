@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import "../components"
 
@@ -76,6 +77,23 @@ Item {
       return
     }
     island.openPage(kind === "agent" && island.agents.pending.length ? "permission" : kind, "pointer")
+  }
+
+  // Music in a bubble: the ambient backlight glows around it instead of
+  // the island (same colors and softness as the island's).
+  RectangularShadow {
+    readonly property real level: island.audio.available && island.audio.active ? island.audio.level : 0.45
+    property color tint: island.music.ambient[0]
+    Behavior on tint { ColorAnimation { duration: 1500 } }
+    anchors.fill: body
+    radius: width / 2
+    scale: body.scale
+    blur: 14 + level * 6
+    spread: -2 + level * 2
+    color: Qt.rgba(tint.r, tint.g, tint.b, 0.28 + level * 0.3)
+    opacity: island.ambientOn && bubble.kind === "music" && bubble.shown ? 1 : 0
+    visible: opacity > 0.01
+    Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
   }
 
   Rectangle {

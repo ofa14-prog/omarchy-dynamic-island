@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1
+
+- The ambient light glows only around the player: the island when music is in the middle (or
+  the music page is open), otherwise the music bubble. Softer backlight that swells and settles
+  with the sound instead of flashing.
+
 ## 1.5.0
 
 - Ambient light: an artwork-colored glow around the island while music plays, pulsing with

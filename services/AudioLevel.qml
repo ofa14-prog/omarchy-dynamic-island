@@ -76,7 +76,8 @@ CONF
     peak = Math.max(raw, peak * 0.997, 0.08)
     var target = Math.min(1, raw / peak)
     // Quick to rise, slow to fall, like a VU meter.
-    var next = target > level ? level + (target - level) * 0.55 : level + (target - level) * 0.12
+    // Eased both ways so the light swells and settles, never flashes.
+    var next = target > level ? level + (target - level) * 0.16 : level + (target - level) * 0.05
     beat = Math.max(beat * 0.82, Math.max(0, target - level) * 2.2)
     level = next
   }

@@ -834,36 +834,43 @@ Item {
         Item {
           id: ambient
           anchors.fill: shape
-          opacity: island.ambientOn ? (island.mode === "expanded" ? 0.55 : 1) : 0
+          // Only around the player: the island glows when music is the
+          // activity in the middle (or the open music page); when music sits
+          // in a bubble, that bubble glows instead (pages/Bubble.qml).
+          readonly property bool here: island.mode === "expanded" ? island.page === "music"
+            : island.mode === "compact" && island.primary === "music"
+          opacity: island.ambientOn && here ? (island.mode === "expanded" ? 0.6 : 1) : 0
           visible: opacity > 0.01
-          Behavior on opacity { NumberAnimation { duration: Theme.ms(700); easing.type: Easing.InOutQuad } }
+          Behavior on opacity { NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutQuad } }
 
+          // A backlight: wide and faint, starting just inside the edge so it
+          // seems to come from behind the island, and swelling softly with
+          // the sound (no flashes).
           readonly property bool moving: island.audio.available && island.audio.active
-          readonly property real level: moving ? island.audio.level : 0.4
-          readonly property real beat: moving ? island.audio.beat : 0
-          readonly property real strength: Math.min(1, 0.32 + level * 0.6 + beat * 0.45)
+          readonly property real level: moving ? island.audio.level : 0.45
+          readonly property real strength: 0.26 + level * 0.3
           property color leftColor: island.music.ambient[0]
           property color rightColor: island.music.ambient[1]
-          Behavior on leftColor { ColorAnimation { duration: 1200 } }
-          Behavior on rightColor { ColorAnimation { duration: 1200 } }
+          Behavior on leftColor { ColorAnimation { duration: 1500 } }
+          Behavior on rightColor { ColorAnimation { duration: 1500 } }
 
           RectangularShadow {
             x: 0
-            width: Math.round(parent.width * 0.62)
+            width: Math.round(parent.width * 0.7)
             height: parent.height
             radius: shape.radius
-            blur: 12 + ambient.level * 16
-            spread: ambient.level * 5 + ambient.beat * 4
-            color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength * 0.9)
+            blur: 24 + ambient.level * 10
+            spread: -2 + ambient.level * 3
+            color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength)
           }
           RectangularShadow {
-            x: Math.round(parent.width * 0.38)
+            x: Math.round(parent.width * 0.3)
             width: parent.width - x
             height: parent.height
             radius: shape.radius
-            blur: 12 + ambient.level * 16
-            spread: ambient.level * 5 + ambient.beat * 4
-            color: Qt.rgba(ambient.rightColor.r, ambient.rightColor.g, ambient.rightColor.b, ambient.strength * 0.9)
+            blur: 24 + ambient.level * 10
+            spread: -2 + ambient.level * 3
+            color: Qt.rgba(ambient.rightColor.r, ambient.rightColor.g, ambient.rightColor.b, ambient.strength)
           }
         }
 
