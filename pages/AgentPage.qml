@@ -36,7 +36,7 @@ Page {
   Binding {
     target: page.agents
     property: "previewLines"
-    value: page.island.feedExpanded ? 8 : 2
+    value: page.island.feedExpanded ? 0 : 2      // 0: every line
   }
   Binding {
     target: page.agents
@@ -331,9 +331,10 @@ Page {
       color: Qt.rgba(1, 1, 1, 0.05)
       border.width: 1
       border.color: Theme.hairline
+      // Quick and soft: starts at once, eases out.
       Behavior on height {
         enabled: !Theme.reduceMotion
-        SpringAnimation { spring: 4; damping: 0.42; epsilon: 0.3 }
+        NumberAnimation { duration: 260; easing.type: Easing.OutQuint }
       }
 
       Accessible.role: Accessible.StaticText
@@ -387,7 +388,7 @@ Page {
         icon: "chevron-up"
         rotation: feed.big ? 0 : 180
         accessibleName: feed.big ? I18n.t("Akışı küçült") : I18n.t("Akışı büyüt")
-        onClicked: island.feedExpanded = !island.feedExpanded
+        onClicked: { island.springMode = "resize"; island.feedExpanded = !island.feedExpanded }
       }
 
       ListView {
@@ -433,12 +434,13 @@ Page {
           // Same shape as a feedLines() entry, for the drawing below.
           readonly property var modelData: ({ g: mark, t: body, c: tone, gc: markTone, strong: bold, indent: nested })
           width: ListView.view.width - 6
-          height: 15
+          // Expanded, long lines wrap so nothing is cut; compact, they end in "…".
+          height: feed.big ? Math.max(15, lineText.implicitHeight) : 15
           Item {
             id: glyph
             x: modelData.indent ? 12 : 0
             width: 14
-            height: parent.height
+            height: 15
             // Bullets are drawn, not typed: fonts disagree on ● and ⏺.
             readonly property bool dot: modelData.g === "●" || modelData.g === "•"
             Rectangle {
@@ -461,13 +463,16 @@ Page {
             }
           }
           Text {
+            id: lineText
             anchors.left: glyph.right
             anchors.leftMargin: 3
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.top: parent.top
+            anchors.topMargin: feed.big ? 0 : Math.round((15 - implicitHeight) / 2)
             text: modelData.t
             color: modelData.c
-            elide: Text.ElideRight
+            elide: feed.big ? Text.ElideNone : Text.ElideRight
+            wrapMode: feed.big ? Text.WrapAnywhere : Text.NoWrap
             textFormat: Text.PlainText
             font.family: Theme.mono
             font.pixelSize: 12

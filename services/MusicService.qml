@@ -13,6 +13,23 @@ Item {
   // exists, whatever else starts or stops; when it goes away the choice
   // falls back to automatic (the one playing).
   property string preferredKey: ""
+  // The player that most recently started playing. When a player starts,
+  // it takes over: an earlier pick is dropped, so switching from one app to
+  // another just works (art, colors and controls follow the new one).
+  property string lastStartedKey: ""
+  Instantiator {
+    model: Mpris.players
+    delegate: Connections {
+      required property var modelData
+      target: modelData
+      function onIsPlayingChanged() {
+        if (!modelData.isPlaying) return
+        var key = music.keyOf(modelData)
+        music.lastStartedKey = key
+        if (music.preferredKey && music.preferredKey !== key) music.preferredKey = ""
+      }
+    }
+  }
 
   function keyOf(p) { return p ? (p.dbusName || p.identity || "") : "" }
   function hasTrack(p) { return p && (p.trackTitle || p.trackArtist) }
@@ -33,7 +50,10 @@ Item {
       var pref = list.filter(p => keyOf(p) === preferredKey)
       if (pref.length) return pref[0]
     }
+    // Several playing at once: the one started last.
     var playing = list.filter(p => p.isPlaying)
+    var newest = playing.filter(p => keyOf(p) === lastStartedKey)
+    if (newest.length) return newest[0]
     return playing.length ? playing[0] : list[0]
   }
 
@@ -83,7 +103,12 @@ Item {
     depth: 3
     rescaleSize: 48
   }
+  // No artwork (many video sites, some players): neutral colors. The
+  // quantizer keeps its last result when the source goes away, which would
+  // carry the previous player's colors over.
+  readonly property bool hasArt: artUrl !== ""
   readonly property color accent: {
+    if (!hasArt) return "#ffffff"
     var colors = quantizer.colors || []
     var best = null, bestScore = -1
     for (var i = 0; i < colors.length; i++) {
@@ -99,6 +124,7 @@ Item {
   // Ambient glow around the island: the two most vivid, clearly different
   // colors of the artwork (left and right), lifted so they glow on black.
   readonly property var ambient: {
+    if (!hasArt) return [Qt.rgba(0.85, 0.88, 0.95, 1), Qt.rgba(0.85, 0.88, 0.95, 1)]
     var colors = (quantizer.colors || []).filter(c => c.hsvValue >= 0.18)
     var lift = c => Qt.hsva(c.hsvHue < 0 ? 0 : c.hsvHue, Math.min(1, c.hsvSaturation * 1.15), Math.max(c.hsvValue, 0.8), 1)
     if (!colors.length) return [accent, accent]

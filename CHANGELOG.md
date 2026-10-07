@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.1
+
+- Players: the one that starts playing takes over, even over an earlier pick, so switching
+  apps switches the island (art, colors, controls). Several playing: the newest wins.
+- No artwork: neutral colors instead of the previous track's (the color extractor kept its
+  last result).
+- Agent feed: compact keeps short "… +N" summaries; expanded shows every line of every
+  output and full commands, wrapped. Expanding starts at once and eases out (260 ms).
+
 ## 1.7.0
 
 - Player switcher on the music page: with several media players, a chip next to the transport

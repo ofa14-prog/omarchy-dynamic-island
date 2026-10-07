@@ -32,7 +32,7 @@ right from the island.
 - **Live feed** (Claude Code, Codex): under the sessions, the last prompts, replies, tool calls and
   their output, drawn the way the agent's terminal draws them. With several sessions, click a row
   to watch that one. It scrolls (wheel or drag) and follows new output while you are at the
-  bottom; the corner arrow makes it taller and shows more of each command's output.
+  bottom; the corner arrow makes it taller and shows every line of output, nothing cut.
 - **Message box**: type under the feed and press Enter to send it to that session's prompt. In
   tmux it goes straight to the pane in the background; otherwise the session's own terminal window
   is focused and the text typed into it (`wtype`). It never guesses a window: if the session's
@@ -43,7 +43,7 @@ right from the island.
 - **Screen recording**: Omarchy's recorder shows as the red recording activity; click to stop.
 - **Several players**: when more than one app has media (two browsers, a browser and Spotify…),
   a small chip next to the transport buttons names the one shown. Click it for the list and pick
-  the one to follow; it stays picked until it closes. Right-click or scroll the chip for the
+  the one to follow; it stays picked until another player starts playing (that one takes over). Right-click or scroll the chip for the
   next one, "Automatic" to follow whatever plays.
 - **Ambient light**: while music plays, the artwork's colors glow softly from behind the player,
   like YouTube's ambient mode (left and right take its two most vivid colors). Only the player

@@ -31,7 +31,7 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 - **Canlı akış** (Claude Code, Codex): oturumların altında son istekler, yanıtlar, araç çağrıları ve
   çıktıları, ajanın kendi terminalindeki gibi. Birden çok oturumda izlemek istediğinize tıklayın;
   akış kaydırılabilir (tekerlek ya da sürükleme); en alttayken yeni çıktıyı izler. Köşedeki ok
-  akışı büyütür ve her komutun çıktısından daha fazlasını gösterir.
+  akışı büyütür ve çıktıların tamamını kesmeden gösterir.
 - **Mesaj kutusu**: akışın altına yazıp Enter'a basın, mesaj o oturuma gider. tmux içindeyse arka
   planda doğrudan gönderilir; değilse oturumun kendi terminal penceresi öne alınıp yazılır (`wtype`).
   Pencere tam olarak bulunamazsa hiçbir şey yazılmaz. İzin ya da soru açıkken kapalıdır.
@@ -41,7 +41,7 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 - **Ekran kaydı**: Omarchy kaydı kırmızı kayıt etkinliği olarak görünür; tıklayınca durur.
 - **Birden çok oynatıcı**: birden fazla uygulamada medya varsa (iki tarayıcı, tarayıcı ve Spotify…)
   oynatma düğmelerinin yanındaki küçük çip gösterilen oynatıcıyı yazar. Tıklayınca liste açılır,
-  izlemek istediğinizi seçersiniz; kapanana kadar seçili kalır. Sağ tık ya da tekerlek sıradakine
+  izlemek istediğinizi seçersiniz; başka bir oynatıcı çalmaya başlayana kadar seçili kalır (o devralır). Sağ tık ya da tekerlek sıradakine
   geçer, "Otomatik" çalanı izler.
 - **Ambiyans ışığı**: müzik çalarken kapak resminin renkleri oynatıcının arkasından yumuşakça
   süzülür, YouTube'un ambiyans modu gibi (sol ve sağ, en canlı iki rengi alır). Yalnızca oynatıcı

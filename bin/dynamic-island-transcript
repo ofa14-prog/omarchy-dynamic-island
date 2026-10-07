@@ -18,6 +18,7 @@ import sys
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|[\x00-\x08\x0b-\x1f]")
 # Output lines per tool result (the feed asks for more when it is expanded).
 RESULT_LINES = 2
+FULL_LINES = 400        # cap per output even when showing everything
 
 CHUNK = 512 * 1024
 MAX_BYTES = 16 * 1024 * 1024
@@ -32,9 +33,11 @@ def one_line(s, limit=220):
 
 
 def first_lines(s, n=None, limit=200):
-    n = n or RESULT_LINES
+    n = n if n is not None else RESULT_LINES
     lines = [ANSI.sub("", l).rstrip() for l in str(s or "").replace("\r", "").split("\n")]
     lines = [l for l in lines if l.strip()]
+    if n <= 0:                            # everything (the expanded feed)
+        n, limit = FULL_LINES, 2000
     out = [one_line(l, limit) for l in lines[:n]]
     if len(lines) > n:
         out.append(f"… +{len(lines) - n}")
@@ -57,10 +60,10 @@ def tool_args(inp):
         if isinstance(v, list):
             v = " ".join(map(str, v))
         if isinstance(v, str) and v.strip():
-            return one_line(v, 160)
+            return one_line(v, 160 if RESULT_LINES > 0 else 4000)
     for v in inp.values():
         if isinstance(v, str) and v.strip():
-            return one_line(v, 160)
+            return one_line(v, 160 if RESULT_LINES > 0 else 4000)
     return ""
 
 
@@ -126,7 +129,7 @@ def claude(entries):
                 if not isinstance(p, dict):
                     continue
                 if p.get("type") == "text" and p.get("text", "").strip():
-                    items.append({"k": "text", "t": first_lines(p["text"], None, 220)})
+                    items.append({"k": "text", "t": first_lines(p["text"], None if RESULT_LINES <= 0 else max(2, RESULT_LINES), 220)})
                 elif p.get("type") == "tool_use":
                     tool = {"k": "tool", "t": p.get("name", "Tool"), "d": tool_args(p.get("input"))}
                     tools[p.get("id")] = tool
@@ -169,7 +172,7 @@ def codex(entries):
                     continue          # environment context and instructions
                 items.append({"k": "prompt", "t": one_line(s)})
             elif p.get("role") == "assistant" and s.strip():
-                items.append({"k": "text", "t": first_lines(s, None, 220)})
+                items.append({"k": "text", "t": first_lines(s, None if RESULT_LINES <= 0 else max(2, RESULT_LINES), 220)})
         elif pt in ("function_call", "custom_tool_call"):
             args = p.get("arguments") if pt == "function_call" else p.get("input")
             try:
@@ -201,7 +204,7 @@ def main():
     agent, path = sys.argv[1], sys.argv[2]
     count = int(sys.argv[3]) if len(sys.argv) > 3 else 10
     global RESULT_LINES
-    RESULT_LINES = max(1, int(sys.argv[4])) if len(sys.argv) > 4 else 2
+    RESULT_LINES = max(0, int(sys.argv[4])) if len(sys.argv) > 4 else 2   # 0: all
     parse = codex if agent == "codex" else claude
     # Step back from the end until there is enough to show: a pasted image
     # or a long tool output can make a single entry megabytes long.
