@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.2
+
+- New preview image (closed island with bubbles, Home, permission, Music and Timer) and a
+  screenshot gallery in the README (`docs/screenshots/`). Third-party artwork is blurred.
+
 ## 1.10.1
 
 - Privacy: a message typed in the agent message box is never a command-line argument (those are

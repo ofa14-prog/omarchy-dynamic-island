@@ -10,6 +10,20 @@ right from the island.
 
 ![Dynamic Island](preview.png)
 
+## Screenshots
+
+**Closed**: the agent at work in the middle, music and a timer split off into bubbles.
+
+<p align="center"><img src="docs/screenshots/compact.png" width="560" alt="Closed island with music and timer bubbles"></p>
+
+| Home | Music |
+|---|---|
+| <img src="docs/screenshots/home.png" alt="Home page: clock, usage and battery rings, shortcuts, quick timers"> | <img src="docs/screenshots/music.png" alt="Music page with artwork-colored backdrop and player picker"> |
+| **Agent**: sessions, live feed, message box | **Permission**: allow / always / deny from the island |
+| <img src="docs/screenshots/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/permission.png" alt="Permission request for writing notes.md"> |
+| **Timer** | **Shelf** |
+| <img src="docs/screenshots/timer.png" alt="Timer page counting down"> | <img src="docs/screenshots/shelf.png" alt="Shelf with four files"> |
+
 ## Features
 
 | | |

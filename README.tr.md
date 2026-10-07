@@ -9,6 +9,20 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 
 ![Dynamic Island](preview.png)
 
+## Ekran görüntüleri
+
+**Kapalı hali**: ortada çalışan ajan, müzik ve sayaç yanlarda baloncuk olarak.
+
+<p align="center"><img src="docs/screenshots/compact.png" width="560" alt="Müzik ve sayaç baloncuklarıyla kapalı ada"></p>
+
+| Ana | Müzik |
+|---|---|
+| <img src="docs/screenshots/home.png" alt="Ana sayfa"> | <img src="docs/screenshots/music.png" alt="Müzik sayfası"> |
+| **Ajan**: oturumlar, canlı akış, mesaj kutusu | **İzin**: adadan izin ver / her zaman / reddet |
+| <img src="docs/screenshots/agent.png" alt="Ajan sayfası"> | <img src="docs/screenshots/permission.png" alt="İzin isteği"> |
+| **Sayaç** | **Raf** |
+| <img src="docs/screenshots/timer.png" alt="Sayaç sayfası"> | <img src="docs/screenshots/shelf.png" alt="Raf"> |
+
 ## Özellikler
 
 | | |
