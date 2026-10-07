@@ -501,10 +501,13 @@ Item {
   }
 
   // Full: restarts the whole Omarchy shell (bar included), which reloads the
-  // island from disk. Omarchy's launcher brings the shell back in a second.
+  // island from disk; it then drops back in (intro). Omarchy's own
+  // `omarchy-restart-shell` when present, run in its own session so it
+  // outlives the shell it restarts.
   function restartShell() {
     Quickshell.execDetached(["sh", "-c",
-      "pkill -KILL -f \"quickshell -n -p ${OMARCHY_PATH:-/usr/share/omarchy}/shell\""])
+      "if command -v omarchy-restart-shell >/dev/null; then exec setsid omarchy-restart-shell; fi; " +
+      "exec pkill -KILL -f \"^quickshell -n -p ${OMARCHY_PATH:-/usr/share/omarchy}/shell\""])
   }
 
   function toggle() {

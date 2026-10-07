@@ -93,17 +93,17 @@ Page {
           caption: I18n.t("Pil")
           tone: island.batteryPercent <= 15 ? Theme.red : Theme.green
         }
-        // Refresh: click clears a stuck island; right-click restarts the
-        // Omarchy shell (the bar blinks once).
+        // Refresh: click restarts the Omarchy shell (bar and island reload,
+        // the island drops back in); right-click only clears a stuck island.
         IslandButton {
           anchors.verticalCenter: parent.verticalCenter
           size: 40
           iconSize: 20
           icon: "restart"
-          accessibleName: I18n.t("Adayı yenile")
-          hint: I18n.t("Sağ tık: Omarchy kabuğunu yeniden başlat")
-          onClicked: island.resetIsland()
-          onRightClicked: island.restartShell()
+          accessibleName: I18n.t("Omarchy kabuğunu yeniden başlat")
+          hint: I18n.t("Sağ tık: yalnızca adayı yenile")
+          onClicked: island.restartShell()
+          onRightClicked: island.resetIsland()
         }
       }
     }

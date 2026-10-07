@@ -24,8 +24,8 @@ right from the island.
   *default* agent, editor, browser, file manager and terminal (with their own app icons), quick timers.
 - **Music**: any MPRIS player; artwork, a draggable scrubber, transport. The waveform takes the artwork's color.
   The music activity shows only while something plays and leaves the moment it is paused or closed.
-- **Refresh**: the round arrow on Home clears a stuck island (sessions, requests, alerts);
-  right-click it to restart the whole Omarchy shell.
+- **Refresh**: the round arrow on Home restarts the whole Omarchy shell (bar and island reload);
+  right-click it to only clear a stuck island (sessions, requests, alerts).
 - **Agent**: follows Omarchy's default agent (`omarchy default agent …`): its name, mark, colors and
   spinner. Every session, what it is doing right now, elapsed time; jump to its terminal, open its
   folder in your editor, start a new session.

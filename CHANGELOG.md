@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+
+- The refresh button on Home now restarts the Omarchy shell on click; right-click only clears
+  the island.
+
 ## 1.6.0
 
 - No more squashed island after a shell restart: it stays hidden until the bar has been

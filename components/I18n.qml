@@ -119,6 +119,8 @@ QtObject {
     "Açılıyor": "Opening",
     "Adayı yenile": "Refresh the island",
     "Sağ tık: Omarchy kabuğunu yeniden başlat": "Right-click: restart the Omarchy shell",
+    "Omarchy kabuğunu yeniden başlat": "Restart the Omarchy shell",
+    "Sağ tık: yalnızca adayı yenile": "Right-click: refresh only the island",
     "Ekran kaydını durdur": "Stop screen recording",
     "Kısayol": "Shortcut",
     " dakikalık zamanlayıcı başlat": " minute timer",

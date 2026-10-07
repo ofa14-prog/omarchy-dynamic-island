@@ -24,8 +24,8 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   kısayollar; hızlı zamanlayıcılar.
 - **Müzik**: tüm MPRIS oynatıcılar; kapak, sürüklenebilir ilerleme çubuğu, kontroller. Dalga formu kapak renginde.
   Müzik etkinliği yalnızca çalarken görünür; duraklatılınca ya da kapatılınca hemen kaybolur.
-- **Yenile**: Ana sayfadaki yuvarlak ok takılan adayı düzeltir (oturumlar, istekler, uyarılar);
-  sağ tık tüm Omarchy kabuğunu yeniden başlatır.
+- **Yenile**: Ana sayfadaki yuvarlak ok tüm Omarchy kabuğunu yeniden başlatır (bar ve ada yeniden
+  yüklenir); sağ tık yalnızca takılan adayı düzeltir (oturumlar, istekler, uyarılar).
 - **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
   spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
 - **Canlı akış** (Claude Code, Codex): oturumların altında son istekler, yanıtlar, araç çağrıları ve
