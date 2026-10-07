@@ -414,6 +414,99 @@ Page {
       }
     }
 
+    // ---- message box: type to the watched session
+    Rectangle {
+      id: composer
+      readonly property var s: page.previewSession
+      readonly property bool can: s !== null && agents.canMessage(s)
+      readonly property color tint: island.profile(s ? s.agent : "").color
+      visible: s !== null
+      width: parent.width
+      height: 42
+      radius: 21
+      color: field.activeFocus ? Theme.fillHover : Theme.fill
+      border.width: field.activeFocus ? 1 : 0
+      border.color: tint
+      Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
+
+      function send() {
+        if (!agents.sendMessage(s, field.text)) return
+        field.text = ""
+        // Hands keyboard focus back before the text is typed into the terminal.
+        island.collapse()
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.IBeamCursor
+        onClicked: field.forceActiveFocus()
+      }
+
+      TextInput {
+        id: field
+        anchors.left: parent.left
+        anchors.leftMargin: 18
+        anchors.right: sendButton.left
+        anchors.rightMargin: 10
+        anchors.verticalCenter: parent.verticalCenter
+        enabled: composer.can
+        clip: true
+        color: Theme.fg
+        selectionColor: composer.tint
+        selectedTextColor: "#000000"
+        selectByMouse: true
+        font.family: Theme.font
+        font.pixelSize: 13
+        renderType: Text.NativeRendering
+        maximumLength: 4000
+        Accessible.role: Accessible.EditableText
+        Accessible.name: placeholder.text
+
+        Keys.onReturnPressed: event => { composer.send(); event.accepted = true }
+        Keys.onEnterPressed: event => { composer.send(); event.accepted = true }
+        Keys.onEscapePressed: event => {
+          if (text !== "") text = ""
+          else island.collapse()
+          event.accepted = true
+        }
+
+        Text {
+          id: placeholder
+          anchors.verticalCenter: parent.verticalCenter
+          width: parent.width
+          visible: field.text === ""
+          elide: Text.ElideRight
+          text: !composer.s ? "" : composer.can
+            ? I18n.t("%1 oturumuna yaz…").arg(composer.s.project || island.profile(composer.s.agent).name)
+            : I18n.t("Önce terminaldeki soruyu yanıtla")
+          color: Theme.tertiary
+          font: field.font
+          renderType: Text.NativeRendering
+        }
+      }
+
+      IslandButton {
+        id: sendButton
+        anchors.right: parent.right
+        anchors.rightMargin: 6
+        anchors.verticalCenter: parent.verticalCenter
+        size: 30
+        iconSize: 16
+        icon: "arrow-up"
+        prominent: field.text.trim() !== ""
+        tint: composer.tint
+        enabled2: composer.can && field.text.trim() !== ""
+        accessibleName: I18n.t("Gönder")
+        onClicked: composer.send()
+      }
+    }
+    // Typing keeps the island open even if the pointer wanders off.
+    Binding {
+      target: page.island
+      property: "composing"
+      value: page.shown && field.activeFocus && field.text !== ""
+    }
+
     // ---- empty / setup state
     Rectangle {
       visible: page.sessions.length === 0

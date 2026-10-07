@@ -691,6 +691,28 @@ Item {
     Quickshell.execDetached(argv)
   }
 
+  // Types a message at the session's prompt (bin/dynamic-island-send): in
+  // the background through tmux when the session runs there, otherwise by
+  // focusing its terminal and typing. A busy Claude Code queues it for after
+  // the current step. Not while a permission or question is open there: its
+  // terminal shows a menu, and typing would pick from it.
+  signal messageSent(string sessionId, bool ok)
+  function canMessage(s) { return canPreview(s) && !hasPending(s.id) }
+  function sendMessage(session, text) {
+    var s = session || focusSession
+    var line = String(text || "").replace(/\s*\n\s*/g, " ").trim()
+    if (!canMessage(s) || !line || sender.running) return false
+    sender.forId = s.id
+    sender.command = [pluginDir + "/bin/dynamic-island-send", line].concat((s.pids || []).map(String))
+    sender.running = true
+    return true
+  }
+  Process {
+    id: sender
+    property string forId: ""
+    onExited: code => bridge.messageSent(forId, code === 0)
+  }
+
   function openInEditor(session) {
     var s = session || focusSession
     if (s && s.cwd) Quickshell.execDetached(["omarchy-launch-editor", s.cwd])

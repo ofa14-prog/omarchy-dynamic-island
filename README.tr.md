@@ -31,6 +31,9 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 - **Canlı akış** (Claude Code, Codex): oturumların altında son istekler, yanıtlar, araç çağrıları ve
   çıktıları, ajanın kendi terminalindeki gibi. Birden çok oturumda izlemek istediğinize tıklayın;
   akışa tıklamak terminaline götürür.
+- **Mesaj kutusu**: akışın altına yazıp Enter'a basın, mesaj o oturuma gider. tmux içindeyse arka
+  planda doğrudan gönderilir; değilse oturumun kendi terminal penceresi öne alınıp yazılır (`wtype`).
+  Pencere tam olarak bulunamazsa hiçbir şey yazılmaz. İzin ya da soru açıkken kapalıdır.
 - **İzinler**: araç, dosya/komut, renkli diff; **İzin ver / Her zaman / Reddet**. Ada, ajanın terminal
   sorusuyla yarışır: hangisinden cevap verirseniz diğeri kapanır.
 - **Sayaç**: geri sayım (+1 dk, duraklat, tekrarla) ve kronometre; süre dolunca ses.

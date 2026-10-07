@@ -41,6 +41,9 @@ import "components/Agents.js" as Agents
 //   charger plugged in (settled 1.5 s)       "Charging" banner
 //   screen recording starts/stops            red activity appears/disappears
 //   file dragged over the island             opens the shelf
+//   message typed on the agent page          sent to the session's prompt
+//                                            (tmux, or its terminal is focused
+//                                            and typed into); banner after
 //   files on the shelf                       shelf bubble (count + fill ring);
 //                                            clicking it shelves the clipboard
 //   pointer hover / leave                    opens after hoverDelay / closes
@@ -272,6 +275,16 @@ Item {
     }
   }
 
+  Connections {
+    target: agentsSvc
+    function onMessageSent(sessionId, ok) {
+      var s = agentsSvc.sessions[sessionId]
+      var name = s ? (s.project || island.profile(s.agent).name) : ""
+      if (ok) island.peek("agent:" + (s ? s.agent : island.agentId), I18n.t("Mesaj gönderildi"), name, Theme.green, 1500)
+      else island.peek("terminal", I18n.t("Gönderilemedi"), I18n.t("Oturumun terminal penceresi bulunamadı"), Theme.red, 2600)
+    }
+  }
+
   ShelfService {
     id: shelfSvc
     onPasted: (added, what) => {
@@ -409,7 +422,8 @@ Item {
   property bool pointerVisited: false
   property bool dragHover: false
   readonly property bool alertActive: agents.pending.length > 0 || timer.ringing
-  readonly property bool locked: (page === "permission" && agents.pending.length > 0) || (page === "timer" && timer.ringing) || dragHover
+  property bool composing: false       // a message is being typed on the agent page
+  readonly property bool locked: (page === "permission" && agents.pending.length > 0) || (page === "timer" && timer.ringing) || dragHover || composing
 
   readonly property var pages: {
     var list = ["home"]

@@ -1,0 +1,41 @@
+#!/bin/bash
+# Send a message to a coding agent's session, as if typed at its prompt.
+# Usage: dynamic-island-send <text> <pid> [<pid>...]   (the hook's ancestor chain)
+#
+#   inside tmux  the text goes straight to the session's pane, in the
+#                background: no window changes focus
+#   otherwise    the session's terminal window is focused and the text typed
+#                into it (wtype), then Enter
+#
+# Exit status: 0 sent, 1 no session window found, 2 nothing to type with.
+
+text="$1"
+shift
+[[ -n $text ]] || exit 1
+
+pids=" "
+for pid in "$@"; do [[ $pid =~ ^[0-9]+$ ]] && pids+="$pid "; done
+
+# ---- tmux: a pane whose shell is in the session's ancestor chain
+for sock in "${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)"/*; do
+  [[ -S $sock ]] || continue
+  while read -r pane_pid pane; do
+    if [[ $pids == *" $pane_pid "* ]]; then
+      tmux -S "$sock" send-keys -t "$pane" -l -- "$text" &&
+        sleep 0.15 &&
+        tmux -S "$sock" send-keys -t "$pane" Enter
+      exit $?
+    fi
+  done < <(tmux -S "$sock" list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null)
+done
+
+# ---- terminal window: focus it, then type
+command -v wtype >/dev/null || exit 2
+# Only the session's own window, never a guess: typing into the wrong
+# window would send your message somewhere else.
+target=$("$(dirname "$(realpath "$0")")/dynamic-island-focus" --exact "$@") || exit 1
+# Let the island hand keyboard focus back and the window come forward.
+sleep 0.35
+active=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+[[ $active == "$target" ]] || exit 1
+wtype -- "$text" && sleep 0.15 && wtype -k Return

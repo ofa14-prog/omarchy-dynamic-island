@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+
+- Message box on the agent page (Claude Code, Codex): send a message to the watched session
+  from the island (`bin/dynamic-island-send`). tmux panes get it in the background; otherwise
+  the session's own window is focused and typed into, and only when it is found exactly.
+- `dynamic-island-focus --exact`: no fallback window.
+
 ## 1.3.0
 
 - Live feed on the agent page for Claude Code and Codex: the last prompts, replies, tool calls

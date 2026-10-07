@@ -1,6 +1,11 @@
 #!/bin/bash
 # Focus the terminal window hosting a Claude Code session.
-# Usage: dynamic-island-focus <pid> [<pid>...]   (the hook's ancestor chain)
+# Usage: dynamic-island-focus [--exact] <pid> [<pid>...]   (the hook's ancestor chain)
+#   --exact  only the session's own window: no fallback (used before typing,
+#            so text can never land in some other window)
+
+exact=0
+[[ $1 == --exact ]] && { exact=1; shift; }
 
 clients=$(hyprctl clients -j 2>/dev/null) || exit 1
 
@@ -13,11 +18,12 @@ done
 
 # Single-process terminals (one server, many windows) never match the chain;
 # fall back to the window Omarchy launches agents in.
-if [[ -z $address ]]; then
+if [[ -z $address && $exact == 0 ]]; then
   address=$(jq -r 'first(.[] | select(.initialClass == "org.omarchy.agent")).address // empty' <<<"$clients")
 fi
 
 [[ -n $address ]] || exit 1
+[[ $exact == 1 ]] && echo "$address"
 
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null 2>&1 ||
   hyprctl dispatch focuswindow "address:$address" >/dev/null

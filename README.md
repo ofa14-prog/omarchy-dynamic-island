@@ -32,6 +32,10 @@ right from the island.
 - **Live feed** (Claude Code, Codex): under the sessions, the last prompts, replies, tool calls and
   their output, drawn the way the agent's terminal draws them. With several sessions, click a row
   to watch that one; click the feed to jump to its terminal.
+- **Message box**: type under the feed and press Enter to send it to that session's prompt. In
+  tmux it goes straight to the pane in the background; otherwise the session's own terminal window
+  is focused and the text typed into it (`wtype`). It never guesses a window: if the session's
+  window can't be found exactly, nothing is typed. Disabled while a permission or question is open.
 - **Permissions**: tool, file or command, colored diff; **Allow / Always / Deny**. The agent races
   the island against its own terminal prompt: answer in either place, the other one closes.
 - **Timer**: countdown (+1 min, pause, repeat) and stopwatch, with a chime when time is up.
