@@ -60,7 +60,7 @@ Item {
       case "music": return (i.music.title || I18n.t("Müzik")) + (i.music.artist ? " — " + i.music.artist : "")
       case "timer": return (i.timer.mode === "stopwatch" ? I18n.t("Kronometre ") : I18n.t("Sayaç ")) + i.timer.display + (i.timer.paused ? I18n.t(" (duraklatıldı)") : "")
       case "recording": return I18n.t("Ekran kaydı ") + i.duration(i.nowMs - i.recording.startedAt) + I18n.t(" · durdurmak için tıkla")
-      case "shelf": return I18n.t("Raf · %1 öğe").arg(i.shelf.count) + I18n.t(" · tıkla: panodakini ekle")
+      case "shelf": return I18n.t("Raf") + " · " + I18n.count(i.shelf.count, "item") + I18n.t(" · tıkla: panodakini ekle")
       case "agent": {
         var s = i.agents.focusSession
         return i.profile(s ? s.agent : "").name + (s && s.project ? " · " + s.project : "") + (i.agents.pending.length ? I18n.t(" · izin bekliyor") : "")
@@ -154,6 +154,7 @@ Item {
       Text {
         anchors.centerIn: parent
         text: island.shelf.count
+        textFormat: Text.PlainText
         color: Theme.fg
         font.family: Theme.font
         font.pixelSize: Math.round(parent.width * (island.shelf.count > 9 ? 0.4 : 0.48))

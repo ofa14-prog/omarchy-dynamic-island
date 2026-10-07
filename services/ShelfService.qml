@@ -66,7 +66,9 @@ Item {
   }
 
   function dropClips(paths) {
-    var mine = paths.filter(p => p.indexOf(clipDir + "/") === 0)
+    // Only files the shelf itself saved: directly in clipDir, no "..".
+    var mine = paths.filter(p => p.indexOf(clipDir + "/") === 0
+      && p.substring(clipDir.length + 1).indexOf("/") === -1 && p.indexOf("..") === -1)
     if (mine.length) Quickshell.execDetached(["rm", "-f", "--"].concat(mine))
   }
 

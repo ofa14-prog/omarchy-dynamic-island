@@ -93,17 +93,42 @@ Page {
           caption: I18n.t("Pil")
           tone: island.batteryPercent <= 15 ? Theme.red : Theme.green
         }
-        // Refresh: click restarts the Omarchy shell (bar and island reload,
-        // the island drops back in); right-click only clears a stuck island.
-        IslandButton {
+        Column {
           anchors.verticalCenter: parent.verticalCenter
-          size: 40
-          iconSize: 20
-          icon: "restart"
-          accessibleName: I18n.t("Omarchy kabuğunu yeniden başlat")
-          hint: I18n.t("Sağ tık: yalnızca adayı yenile")
-          onClicked: island.restartShell()
-          onRightClicked: island.resetIsland()
+          spacing: 6
+          // Language: the current flag; click for the list.
+          Rectangle {
+            id: langButton
+            width: 28; height: 28
+            radius: 14
+            color: langMouse.containsMouse || page.langOpen ? Theme.fillHover : Theme.fill
+            Flag {
+              anchors.centerIn: parent
+              code: I18n.lang
+              size: 18
+            }
+            MouseArea {
+              id: langMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: page.langOpen = !page.langOpen
+            }
+            Accessible.role: Accessible.ComboBox
+            Accessible.name: I18n.t("Dil") + ": " + (I18n.languages.find(l => l.code === I18n.lang) || {}).name
+            Accessible.onPressAction: page.langOpen = !page.langOpen
+          }
+          // Refresh: click restarts the Omarchy shell (bar and island reload,
+          // the island drops back in); right-click only clears a stuck island.
+          IslandButton {
+            size: 28
+            iconSize: 15
+            icon: "restart"
+            accessibleName: I18n.t("Omarchy kabuğunu yeniden başlat")
+            hint: I18n.t("Sağ tık: yalnızca adayı yenile")
+            onClicked: island.restartShell()
+            onRightClicked: island.resetIsland()
+          }
         }
       }
     }
@@ -208,6 +233,89 @@ Page {
             island.timer.startCountdown(modelData * 60, modelData === 25 ? "Pomodoro" : "")
             island.setPage("timer")
           }
+        }
+      }
+    }
+  }
+
+  // ---- language list
+  property bool langOpen: false
+  onShownChanged: if (!shown) langOpen = false
+
+  MouseArea {
+    anchors.fill: parent
+    visible: page.langOpen
+    z: 9
+    onClicked: page.langOpen = false
+  }
+  Rectangle {
+    z: 10
+    anchors.right: parent.right
+    y: 64
+    width: 176
+    height: langList.implicitHeight + 12
+    radius: 16
+    color: "#1c1c1e"
+    border.width: 1
+    border.color: Qt.rgba(1, 1, 1, 0.10)
+    opacity: page.langOpen ? 1 : 0
+    visible: opacity > 0.01
+    scale: page.langOpen ? 1 : 0.94
+    transformOrigin: Item.TopRight
+    Behavior on opacity { NumberAnimation { duration: Theme.ms(140) } }
+    Behavior on scale {
+      enabled: !Theme.reduceMotion
+      SpringAnimation { spring: 5; damping: 0.45; epsilon: 0.005 }
+    }
+
+    Column {
+      id: langList
+      x: 6; y: 6
+      width: parent.width - 12
+      spacing: 2
+      Repeater {
+        model: I18n.languages
+        delegate: Rectangle {
+          id: langRow
+          required property var modelData
+          readonly property bool current: modelData.code === I18n.lang
+          width: parent.width
+          height: 36
+          radius: 11
+          color: rowMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+          Flag {
+            id: rowFlag
+            x: 10
+            anchors.verticalCenter: parent.verticalCenter
+            code: langRow.modelData.code
+            size: 20
+          }
+          Label {
+            anchors.left: rowFlag.right
+            anchors.leftMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: langRow.modelData.name
+            font.pixelSize: 13
+            strong: langRow.current
+          }
+          Icon {
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            visible: langRow.current
+            name: "check"
+            size: 15
+            color: Theme.blue
+          }
+          MouseArea {
+            id: rowMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { island.setConfig("language", langRow.modelData.code); page.langOpen = false }
+          }
+          Accessible.role: Accessible.ListItem
+          Accessible.name: langRow.modelData.name
         }
       }
     }

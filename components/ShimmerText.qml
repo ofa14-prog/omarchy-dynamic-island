@@ -21,7 +21,9 @@ Text {
   maximumLineCount: 1
   verticalAlignment: Text.AlignVCenter
 
-  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }
+  // The label is untrusted (agent tool names and messages): escaped before
+  // it goes into the StyledText markup, so it can never add tags.
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") }
 
   text: {
     if (!running || Theme.reduceMotion) return label

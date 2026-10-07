@@ -113,31 +113,31 @@ Page {
           }
         }
 
-        // Command / diff preview, monospace, a few lines max.
-        Text {
+        // Command / diff preview, monospace, a few lines max. One plain-text
+        // line per row (the detail comes from the agent: never rich text);
+        // diff lines are colored by their row.
+        Column {
           visible: page.hasDetail
           width: parent.width
-          textFormat: Text.RichText
-          renderType: Text.NativeRendering
-          wrapMode: Text.WrapAnywhere
-          maximumLineCount: 7
-          elide: Text.ElideRight
-          font.family: Theme.mono
-          font.pixelSize: 12
-          color: Theme.fg
-          lineHeight: 1.15
-          text: {
-            if (!page.req) return ""
-            var esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/ /g, "&nbsp;")
-            var lines = page.req.detail.split("\n").slice(0, 7)
-            return lines.map(l => {
-              if (page.isDiff && l.indexOf("+ ") === 0) return "<span style='color:" + Theme.green + "'>" + esc(l) + "</span>"
-              if (page.isDiff && l.indexOf("- ") === 0) return "<span style='color:" + Theme.red + "'>" + esc(l) + "</span>"
-              return esc(l)
-            }).join("<br>")
-          }
+          spacing: 1
           Accessible.role: Accessible.StaticText
           Accessible.name: page.req ? page.req.detail : ""
+          Repeater {
+            model: page.req ? page.req.detail.split("\n").slice(0, 7) : []
+            delegate: Text {
+              required property string modelData
+              width: parent.width
+              text: modelData
+              textFormat: Text.PlainText
+              renderType: Text.NativeRendering
+              wrapMode: Text.NoWrap
+              elide: Text.ElideRight
+              font.family: Theme.mono
+              font.pixelSize: 12
+              color: page.isDiff && modelData.indexOf("+ ") === 0 ? Theme.green
+                : page.isDiff && modelData.indexOf("- ") === 0 ? Theme.red : Theme.fg
+            }
+          }
         }
       }
     }

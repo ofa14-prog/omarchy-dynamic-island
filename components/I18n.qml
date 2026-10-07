@@ -1,214 +1,56 @@
 pragma Singleton
 import QtQuick
+import "Translations.js" as Tr
 
-// UI strings. Source strings are Turkish; `t()` returns the English entry
-// when the language is "en" (or any language without a table yet).
-// Island.qml sets `lang` from the `language` config key ("auto" follows the
-// system locale: Turkish for tr_*, English otherwise).
+// UI strings. The code passes the Turkish source string to t(); the table
+// for the chosen language (components/Translations.js) gives the text, with
+// English as the fallback. Island.qml sets `lang` from the `language` config
+// key: "en" (default), "es", "ru", "tr", or "auto" to follow the system.
 QtObject {
   id: i18n
 
   property string lang: "en"
 
+  // Offered in the language picker, in this order.
+  readonly property var languages: [
+    { code: "en", name: "English" },
+    { code: "es", name: "Español" },
+    { code: "ru", name: "Русский" },
+    { code: "tr", name: "Türkçe" }
+  ]
+  readonly property var codes: languages.map(l => l.code)
+
   function t(s) {
     if (lang === "tr") return s
-    var v = en[s]
+    var table = lang === "es" ? Tr.es : lang === "ru" ? Tr.ru : Tr.en
+    var v = table[s]
+    if (v === undefined && table !== Tr.en) v = Tr.en[s]
     return v !== undefined ? v : s
   }
 
-  readonly property var en: ({
-    // Island / shared
-    "Ajan": "Agent",
-    "Tarayıcı": "Browser",
-    "Dosyalar": "Files",
-    "Ekran": "Screenshot",
-    "Editör": "Editor",
-    "Claude izin istiyor": "Claude needs permission",
-    "%1 izin istiyor": "%1 needs permission",
-    "%1 bitirdi": "%1 finished",
-    "%1 seni bekliyor": "%1 is waiting for you",
-    "%1 soruyor": "%1 is asking you",
-    "%1 bir hatayla durdu": "%1 stopped on an error",
-    "Boşta": "Idle",
-    "Durduruldu": "Stopped",
-    "Hata": "Error",
-    "Sessiz · durmuş olabilir": "Quiet · may have stopped",
-    "Soru soruyor": "Asking you",
-    "Claude izin istiyor: ": "Claude needs permission: ",
-    "İzin verildi": "Allowed",
-    "Reddedildi": "Denied",
-    "Claude bitirdi": "Claude finished",
-    "Claude seni bekliyor": "Claude is waiting for you",
-    "Süre doldu": "Time's up",
-    "Zamanlayıcı bitti": "Timer finished",
-    "Şarj oluyor": "Charging",
-    " sn": "s",
-    " sa ": "h ",
-    " dk": " min",
-    "Zamanlayıcı": "Timer",
-    "Açık": "Open",
-    "Açmak için tıklayın": "Click to open",
-    "Albüm kapağı": "Album art",
-    "Claude çalışıyor": "Claude is working",
-    "Çalıyor": "Playing",
-    "Duraklatıldı": "Paused",
-
-    // Bubbles
-    "Müzik": "Music",
-    "Kronometre ": "Stopwatch ",
-    "Sayaç ": "Timer ",
-    " (duraklatıldı)": " (paused)",
-    "Ekran kaydı ": "Recording ",
-    "Ekran kaydı  ": "Recording  ",
-    " · durdurmak için tıkla": " · click to stop",
-    " · izin bekliyor": " · needs permission",
-    "Kayıt durduruluyor": "Stopping recording",
-    "Tıkla: aç. Sağ tık: öne getir.": "Click: open. Right-click: bring to front.",
-    "Tıkla: aç. Çift tık: ortaya al.": "Click: open. Double-click: move to the center.",
-
-    // Claude
-    "İzin bekliyor · ": "Needs permission · ",
-    "Girdi bekliyor": "Waiting for input",
-    "Düşünüyor…": "Thinking…",
-    "Bağlamı sıkıştırıyor…": "Compacting context…",
-    "Araç": "Tool",
-    "Bitti": "Done",
-    "Hazır": "Ready",
-    " oturum": " sessions",
-    "Kullanım ayrıntıları": "Usage details",
-    " araç": " tools",
-    "Yanıtla": "Respond",
-    "İzin isteğini yanıtla": "Respond to permission request",
-    "Klasörü editörde aç": "Open folder in editor",
-    "Terminale git": "Go to terminal",
-    "Aktif oturum yok": "No active sessions",
-    "Claude Code bağlı değil": "Claude Code not connected",
-    "Bir oturum başlatınca burada görünür.": "Sessions show up here once you start one.",
-    "Hook'ları kurunca oturumlar ve izinler burada.": "Install the hooks to see sessions and permissions here.",
-    "Bağla": "Connect",
-    "%1 bağlı değil": "%1 is not connected",
-    "%1 canlı oturum paylaşmıyor": "%1 does not share live sessions",
-    "Kısayol ve kullanım bilgisi yine burada.": "Shortcuts and usage are still here.",
-    "Bağlayınca oturumlar ve izinler burada.": "Connect it to see sessions and permissions here.",
-    "Bağlayınca oturumlar burada.": "Connect it to see sessions here.",
-    "%1 bağlantısını kur": "Connect %1",
-    "Claude Code hook'larını kur": "Install Claude Code hooks",
-    "Yeni oturum": "New session",
-    "Yeni ": "New ",
-    " oturumu": " session",
-    "Etkin oturumun terminaline git": "Go to the active session's terminal",
-    "Etkin oturumun klasörünü editörde aç": "Open the active session's folder in the editor",
-    "Biten oturumları temizle": "Clear finished sessions",
-    "İzin gerekiyor": "Needs permission",
-    "Seni bekliyor": "Waiting for you",
-    "Sıkıştırıyor…": "Compacting…",
-    "Çalışıyor": "Working",
-    "Saat ": "Time ",
-    "Kalan süre ": "Remaining ",
-    "Geçen süre ": "Elapsed ",
-
-    // Home
-    " yüzde ": " percent ",
-    "5s": "5h",
-    "7g": "7d",
-    "5 sa": "5 h",
-    "Hafta": "Week",
-    "Pil": "Battery",
-    "Durdur": "Stop",
-    "Ada yenilendi": "Island refreshed",
-    "Açılıyor": "Opening",
-    "Adayı yenile": "Refresh the island",
-    "Sağ tık: Omarchy kabuğunu yeniden başlat": "Right-click: restart the Omarchy shell",
-    "Omarchy kabuğunu yeniden başlat": "Restart the Omarchy shell",
-    "Sağ tık: yalnızca adayı yenile": "Right-click: refresh only the island",
-    "Ekran kaydını durdur": "Stop screen recording",
-    "Kısayol": "Shortcut",
-    " dakikalık zamanlayıcı başlat": " minute timer",
-
-    // Music
-    "Oynatıcıyı göster": "Show player",
-    "Bir şey çalmıyor": "Nothing playing",
-    "Şarkı konumu": "Track position",
-    "Önceki parça": "Previous track",
-    "Duraklat": "Pause",
-    "Oynat": "Play",
-    "Boşluk": "Space",
-    "Sonraki parça": "Next track",
-
-    // Permission
-    "Reddet": "Deny",
-    "Esc veya N": "Esc or N",
-    "Her zaman": "Always",
-    "Bu oturumda her zaman izin ver": "Always allow in this session",
-    "İzin ver": "Allow",
-    "Enter veya Y": "Enter or Y",
-    "⏎ izin · esc ret": "⏎ allow · esc deny",
-    " · A hep": " · A always",
-    " · T terminal": " · T terminal",
-    "Terminalde aç": "Open in terminal",
-
-    // Shelf
-    "Rafa bırak": "Drop to shelve",
-    "Dosyaları buraya sürükle": "Drag files here",
-    "Daha sonra istediğin uygulamaya geri sürükle": "Drag them back out into any app later",
-    "Raf, ": "Shelf, ",
-    " dosya": " files",
-    " dosyasını raftan kaldır": ": remove from shelf",
-    "Yolları kopyala": "Copy paths",
-    "Tüm dosya yollarını panoya kopyala": "Copy all file paths to the clipboard",
-    "Rafı boşalt": "Clear shelf",
-    "Görsel rafa eklendi": "Image added to shelf",
-    "Metin rafa eklendi": "Text added to shelf",
-    "Rafa eklendi": "Added to shelf",
-    "%1 dosya rafa eklendi": "%1 files added to shelf",
-    "Rafta %1 öğe": "%1 items on the shelf",
-    "Zaten rafta": "Already on the shelf",
-    "Raf · %1 öğe": "Shelf · %1 items",
-    " · tıkla: panodakini ekle": " · click: add clipboard",
-    "%1 öğe": "%1 items",
-    "Panodan ekle": "Add clipboard",
-    "Panodakini rafa ekle": "Put the clipboard on the shelf",
-    "Canlı akış": "Live feed",
-    "Oynatıcı: ": "Player: ",
-    "%1 oynatıcı var. Tıkla: listeyi aç. Sağ tık: sıradaki.": "%1 players. Click: open the list. Right-click: next one.",
-    "Oynatıcı seç": "Choose player",
-    "Otomatik": "Automatic",
-    "Otomatik: çalanı göster": "Automatic: show the one playing",
-    ", çalıyor": ", playing",
-    "Akışı büyüt": "Expand feed",
-    "Akışı küçült": "Shrink feed",
-    "En alta git": "Jump to the newest",
-    "%1 oturumuna yaz…": "Message %1…",
-    "Önce terminaldeki soruyu yanıtla": "Answer the prompt in the terminal first",
-    "Gönder": "Send",
-    "Mesaj gönderildi": "Message sent",
-    "Gönderilemedi": "Couldn't send",
-    "Oturumun terminal penceresi bulunamadı": "The session's terminal window wasn't found",
-    "ya da tıkla: kopyaladığını rafa ekle": "or click to shelve what you copied",
-    "Henüz bir şey yok": "Nothing yet",
-    "Kullanıcı tarafından kesildi": "Interrupted by user",
-    "Raftaki tüm dosyaları kaldır (dosyalar silinmez)": "Remove everything from the shelf (files are not deleted)",
-
-    // Tabs
-    "Ana": "Home",
-    "Sayaç": "Timer",
-    "Raf": "Shelf",
-    "Ana sayfa": "Home",
-    "Adayı kapat": "Close island",
-
-    // Timer
-    "Kronometre": "Stopwatch",
-    "Bir dakika ekle": "Add a minute",
-    "Devam et": "Resume",
-    "Tekrarla": "Repeat",
-    "Tamam": "OK",
-    "İptal": "Cancel",
-    "Bir dakika azalt": "One minute less",
-    "Süre ": "Duration ",
-    " dakika": " minutes",
-    "Bir dakika artır": "One minute more",
-    "Zamanlayıcıyı başlat": "Start timer",
-    " dakika seç": " minutes",
-    "Kronometre başlat": "Start stopwatch"
+  // "3 sessions", "1 session", "5 сессий": a number with its noun in the
+  // right form. Russian has three forms (1 / 2–4 / 5+, by the last digits).
+  readonly property var nouns: ({
+    session: { en: ["session", "sessions"], es: ["sesión", "sesiones"], ru: ["сессия", "сессии", "сессий"], tr: ["oturum"] },
+    tool:    { en: ["tool", "tools"], es: ["herramienta", "herramientas"], ru: ["инструмент", "инструмента", "инструментов"], tr: ["araç"] },
+    file:    { en: ["file", "files"], es: ["archivo", "archivos"], ru: ["файл", "файла", "файлов"], tr: ["dosya"] },
+    item:    { en: ["item", "items"], es: ["elemento", "elementos"], ru: ["элемент", "элемента", "элементов"], tr: ["öğe"] },
+    minute:  { en: ["minute", "minutes"], es: ["minuto", "minutos"], ru: ["минута", "минуты", "минут"], tr: ["dakika"] }
   })
+  function count(n, noun) {
+    var forms = (nouns[noun] || {})[lang] || (nouns[noun] || {}).en || [noun]
+    var form = forms[0]
+    if (lang === "ru") {
+      var d = n % 10, h = n % 100
+      form = d === 1 && h !== 11 ? forms[0] : d >= 2 && d <= 4 && (h < 12 || h > 14) ? forms[1] : forms[2]
+    } else if (forms.length > 1 && n !== 1) {
+      form = forms[1]
+    }
+    return n + " " + form
+  }
+
+  // Date and number formats that go with the language.
+  function localeFor(code) {
+    return ({ en: "en_US", es: "es_ES", ru: "ru_RU", tr: "tr_TR" })[code] || "en_US"
+  }
 }

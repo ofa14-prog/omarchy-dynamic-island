@@ -129,7 +129,7 @@ Page {
         }
         Label {
           anchors.verticalCenter: parent.verticalCenter
-          text: agents.sessionList.length > 0 ? agents.sessionList.length + I18n.t(" oturum") : ""
+          text: agents.sessionList.length > 0 ? I18n.count(agents.sessionList.length, "session") : ""
           font.pixelSize: 13
           color: Theme.tertiary
         }
@@ -247,7 +247,7 @@ Page {
               Label {
                 id: timeLabel
                 visible: agents.isBusy(row.s) && row.s.turnStartedAt > 0
-                text: island.duration(island.nowMs - row.s.turnStartedAt) + (row.s.toolCount ? " · " + row.s.toolCount + I18n.t(" araç") : "")
+                text: island.duration(island.nowMs - row.s.turnStartedAt) + (row.s.toolCount ? " · " + I18n.count(row.s.toolCount, "tool") : "")
                 font.pixelSize: 12
                 tabular: true
                 color: Theme.tertiary
@@ -456,6 +456,7 @@ Page {
               visible: !glyph.dot
               anchors.verticalCenter: parent.verticalCenter
               text: modelData.g
+              textFormat: Text.PlainText
               color: modelData.gc || modelData.c
               font.family: Theme.mono
               font.pixelSize: 11
@@ -561,6 +562,7 @@ Page {
 
         Text {
           id: placeholder
+          textFormat: Text.PlainText
           anchors.verticalCenter: parent.verticalCenter
           width: parent.width
           visible: field.text === ""
@@ -656,7 +658,7 @@ Page {
       IslandButton {
         size: 36
         icon: "terminal"
-        text: "Terminal"
+        text: I18n.t("Terminal")
         fontSize: 13
         enabled2: agents.focusSession !== null
         accessibleName: I18n.t("Etkin oturumun terminaline git")

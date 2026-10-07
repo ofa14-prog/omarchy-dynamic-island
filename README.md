@@ -94,8 +94,17 @@ Keyboard while the island has focus: `Esc` close or deny · `Enter`/`Y` allow ·
 ## Requirements
 
 - Omarchy 4 (the Quickshell-based `omarchy-shell`) on Hyprland
-- Already part of Omarchy: `python3`, `jq`, `pw-play`, `notify-send`, `wl-copy`, `xdg-open`
-- Optional: any of the agents above
+- Already part of Omarchy: `python3`, `jq`, `wl-clipboard`, `wtype`, `tmux`, `pw-play`,
+  `notify-send`, `xdg-open`, `nautilus`
+- Optional:
+  - [`cava`](https://github.com/karlstav/cava) (`sudo pacman -S cava`): the ambient light moves with
+    the sound; without it the light holds still
+  - `sound-theme-freedesktop`: the chime when a timer ends; without it the timer ends silently
+    (the notification still shows)
+  - any of the agents above
+
+Nothing is installed or changed on your system when you enable the plugin. Connecting an agent
+and making room in the bar are separate, explicit steps (below), and both can be undone.
 
 ## Install
 
@@ -146,7 +155,7 @@ Optional `~/.config/omarchy/dynamic-island.json`; changes apply live.
 | Key | Default | |
 |---|---|---|
 | `agent` | `""` | Agent the island is styled after; empty follows `omarchy default agent` |
-| `language` | `"auto"` | `"en"`, `"tr"`, or `"auto"` (Turkish on a `tr_*` locale, else English) |
+| `language` | `"en"` | `"en"`, `"es"`, `"ru"`, `"tr"`, or `"auto"` (the system language if the island has it, else English). Also set from the flag on the Home page |
 | `hoverExpand` / `hoverDelay` | `true` / `380` | Open on hover |
 | `collapseDelay` | `650` | Close after the pointer leaves (ms) |
 | `reduceMotion` | `false` | Short fades instead of springs and shakes |
@@ -162,11 +171,18 @@ Optional `~/.config/omarchy/dynamic-island.json`; changes apply live.
 | `agentQuietSeconds` | `180` | A busy turn with no sign of life for this long shows as "quiet" |
 | `shortcuts` | `[]` | Empty uses your defaults. Example: `[{"icon":"globe","label":"Web","command":["omarchy-launch-browser"]}]`. Actions: `agent`, `editor`, `browser`, `files`, `terminal`, `screenshot`, `stopwatch`, `{"action":"timer","seconds":600}`, `page:<name>` |
 
+## Languages
+
+English (default), Spanish, Russian and Turkish. Pick one from the flag button on the Home page
+(it is saved to `~/.config/omarchy/dynamic-island.json`); dates follow the language. Strings live
+in `components/Translations.js`, keyed by the Turkish source; `tests/check_i18n.py` lists anything
+missing, so adding a language is one more table there plus its entry in `components/I18n.qml`.
+
 ## IPC
 
 ```sh
 omarchy-shell dynamicisland toggle | open <home|music|agent|timer|shelf> | close
-omarchy-shell dynamicisland reset | restartShell
+omarchy-shell dynamicisland reset | restartShell   # clear a stuck island | restart the shell
 omarchy-shell dynamicisland approve | always | deny
 omarchy-shell dynamicisland timer 300 | stopwatch | timerStop
 omarchy-shell dynamicisland shelfAdd /path/to/file

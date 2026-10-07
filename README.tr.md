@@ -90,8 +90,16 @@ Klavye (ada odaktayken): `Esc` kapat/reddet · `Enter`/`Y` izin ver · `A` her z
 ## Gereksinimler
 
 - Omarchy 4 (Quickshell tabanlı `omarchy-shell`) ve Hyprland
-- Omarchy'de zaten var: `python3`, `jq`, `pw-play`, `notify-send`, `wl-copy`, `xdg-open`
-- İsteğe bağlı: yukarıdaki ajanlardan herhangi biri
+- Omarchy'de zaten var: `python3`, `jq`, `wl-clipboard`, `wtype`, `tmux`, `pw-play`,
+  `notify-send`, `xdg-open`, `nautilus`
+- İsteğe bağlı:
+  - [`cava`](https://github.com/karlstav/cava) (`sudo pacman -S cava`): ambiyans ışığı sesle hareket
+    eder; yoksa ışık sabit durur
+  - `sound-theme-freedesktop`: sayaç bitince çalan ses; yoksa sayaç sessiz biter (bildirim yine gelir)
+  - yukarıdaki ajanlardan herhangi biri
+
+Eklentiyi etkinleştirmek sisteminize hiçbir şey kurmaz ve hiçbir ayarı değiştirmez. Ajan bağlamak
+ve bar'da yer açmak ayrı, açık adımlardır (aşağıda) ve ikisi de geri alınabilir.
 
 ## Kurulum
 
@@ -136,6 +144,12 @@ için [İngilizce README'deki tabloya](README.md#settings) bakın. Örnek:
 ```json
 { "language": "tr", "agent": "", "reduceMotion": false, "hoverDelay": 380 }
 ```
+
+## Diller
+
+İngilizce (varsayılan), İspanyolca, Rusça ve Türkçe. Ana sayfadaki bayrak düğmesinden seçilir
+(`~/.config/omarchy/dynamic-island.json` dosyasına kaydedilir); tarihler de dile uyar. Ayarda
+`"language": "auto"` sistem dilini kullanır.
 
 ## IPC
 

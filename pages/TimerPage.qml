@@ -157,7 +157,7 @@ Page {
         width: 140; height: parent.height
         onWheel: wheel => page.pickMinutes = Math.max(1, Math.min(180, page.pickMinutes + (wheel.angleDelta.y > 0 ? 1 : -1)))
         Accessible.role: Accessible.SpinBox
-        Accessible.name: I18n.t("Süre ") + page.pickMinutes + I18n.t(" dakika")
+        Accessible.name: I18n.t("Süre ") + I18n.count(page.pickMinutes, "minute")
       }
       IslandButton {
         anchors.right: start.left
@@ -193,7 +193,7 @@ Page {
           fontSize: 13
           text: modelData + I18n.t(" dk")
           tint: page.pickMinutes === modelData ? Theme.orange : Theme.fg
-          accessibleName: modelData + I18n.t(" dakika seç")
+          accessibleName: I18n.count(modelData, "minute")
           onClicked: page.pickMinutes = modelData
         }
       }

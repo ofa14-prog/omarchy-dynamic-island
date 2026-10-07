@@ -8,5 +8,6 @@ Page 1.0 Page.qml
 Art 1.0 Art.qml
 Label 1.0 Label.qml
 Icon 1.0 Icon.qml
+Flag 1.0 Flag.qml
 ShimmerText 1.0 ShimmerText.qml
 singleton I18n 1.0 I18n.qml

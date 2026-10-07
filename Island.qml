@@ -81,7 +81,7 @@ Item {
     reduceMotion: false,
     idleClock: true,
     clockFormat: "ddd d MMM  HH:mm",
-    language: "auto",
+    language: "en",         // en | es | ru | tr | auto (follow the system)
     locale: "",
     priority: ["agent", "recording", "timer", "music"],
     compactHeight: "auto",
@@ -103,7 +103,9 @@ Item {
   function cfg(key) { return userConfig[key] !== undefined ? userConfig[key] : defaults[key] }
 
   FileView {
+    id: configFile
     path: island.home + "/.config/omarchy/dynamic-island.json"
+    atomicWrites: true
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
@@ -113,15 +115,28 @@ Item {
 
   Binding { target: Theme; property: "reduceMotion"; value: island.cfg("reduceMotion") === true }
 
-  // "auto" picks Turkish on a tr_* system, English everywhere else.
+  // English unless set; "auto" follows the system language when the island
+  // has it (en, es, ru, tr) and falls back to English.
   readonly property string language: {
-    var l = String(cfg("language") || "auto")
-    if (l !== "auto") return l
-    var sys = Quickshell.env("LC_MESSAGES") || Quickshell.env("LANG") || ""
-    return sys.indexOf("tr") === 0 ? "tr" : "en"
+    var l = String(cfg("language") || "en")
+    if (l === "auto") {
+      var sys = (Quickshell.env("LC_MESSAGES") || Quickshell.env("LANG") || "").substring(0, 2)
+      l = sys
+    }
+    return I18n.codes.indexOf(l) !== -1 ? l : "en"
   }
   Binding { target: I18n; property: "lang"; value: island.language }
-  readonly property string localeName: cfg("locale") || (language === "tr" ? "tr_TR" : Qt.locale().name)
+  readonly property string localeName: cfg("locale") || I18n.localeFor(language)
+
+  // Saves one setting to the user's config file (only on an explicit choice
+  // in the UI, such as the language picker); every other key is kept.
+  function setConfig(key, value) {
+    var next = {}
+    for (var k in userConfig) next[k] = userConfig[k]
+    next[key] = value
+    userConfig = next
+    configFile.setText(JSON.stringify(next, null, 2) + "\n")
+  }
   Binding { target: Theme; property: "bg"; value: island.cfg("color") }
 
   // Text follows the Omarchy system font (omarchy font set …).
@@ -181,7 +196,7 @@ Item {
       { action: "editor", label: editorLabels[apps.editor] || apps.editorName, image: apps.editorIcon, icon: "code" },
       { action: "browser", label: I18n.t("Tarayıcı"), image: apps.browserIcon, icon: "globe" },
       { action: "files", label: I18n.t("Dosyalar"), image: apps.filesIcon, icon: "folder" },
-      { action: "terminal", label: "Terminal", image: apps.terminalIcon, icon: "terminal" },
+      { action: "terminal", label: I18n.t("Terminal"), image: apps.terminalIcon, icon: "terminal" },
       { action: "screenshot", label: I18n.t("Ekran"), icon: "camera" }
     ]
   }
@@ -301,7 +316,7 @@ Item {
         island.bounce()
         island.peek("shelf", what === "image" ? I18n.t("Görsel rafa eklendi") : what === "text" ? I18n.t("Metin rafa eklendi")
           : added === 1 ? I18n.t("Rafa eklendi") : I18n.t("%1 dosya rafa eklendi").arg(added),
-          I18n.t("Rafta %1 öğe").arg(shelfSvc.count), Theme.blue, 1600, "shelf")
+          I18n.t("Rafta: %1").arg(I18n.count(shelfSvc.count, "item")), Theme.blue, 1600, "shelf")
       } else if (what === "known") {
         island.peek("shelf", I18n.t("Zaten rafta"), "", Theme.secondary, 1300, "shelf")
       } else {
@@ -503,13 +518,11 @@ Item {
   }
 
   // Full: restarts the whole Omarchy shell (bar included), which reloads the
-  // island from disk; it then drops back in (intro). Omarchy's own
-  // `omarchy-restart-shell` when present, run in its own session so it
-  // outlives the shell it restarts.
+  // island from disk; it then drops back in (intro). Uses Omarchy's own
+  // `omarchy-restart-shell`, in its own session so it outlives the shell it
+  // restarts.
   function restartShell() {
-    Quickshell.execDetached(["sh", "-c",
-      "if command -v omarchy-restart-shell >/dev/null; then exec setsid omarchy-restart-shell; fi; " +
-      "exec pkill -KILL -f \"^quickshell -n -p ${OMARCHY_PATH:-/usr/share/omarchy}/shell\""])
+    Quickshell.execDetached(["setsid", "omarchy-restart-shell"])
   }
 
   function toggle() {

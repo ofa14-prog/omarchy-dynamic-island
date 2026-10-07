@@ -80,7 +80,7 @@ Page {
     keyNavigationEnabled: true
 
     Accessible.role: Accessible.List
-    Accessible.name: I18n.t("Raf, ") + shelf.count + I18n.t(" dosya")
+    Accessible.name: I18n.t("Raf, ") + I18n.count(shelf.count, "file")
 
     add: Transition {
       enabled: !Theme.reduceMotion

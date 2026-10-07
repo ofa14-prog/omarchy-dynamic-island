@@ -189,7 +189,7 @@ Page {
       anchors.right: parent.right
       anchors.rightMargin: view.edge + 6
       anchors.verticalCenter: parent.verticalCenter
-      text: I18n.t("%1 öğe").arg(island.shelf.count)
+      text: I18n.count(island.shelf.count, "item")
       font.pixelSize: 14
       strong: true
       color: Theme.blue

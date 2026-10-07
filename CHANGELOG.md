@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.9.0
+
+- Languages: English (now the default), Spanish, Russian and Turkish, picked from a flag button
+  on the Home page (saved to the config). Translations live in `components/Translations.js`;
+  counts use the right plural form per language. Tabs adapt to long labels (smaller font,
+  then no icon, then an ellipsis).
+- Security: no rich text anywhere untrusted text is shown. The permission page's command/diff
+  preview is plain text line by line; ShimmerText escapes its input. `tests/check_qml.py`
+  fails on any `Text` without a safe `textFormat`.
+- The shelf only deletes clipboard files it saved itself (no `..` paths).
+- Restart uses `omarchy-restart-shell` only.
+- CI: manifest, QML text safety, translation coverage, script syntax.
+- README: full dependency list (all part of Omarchy; `cava` and the timer sound optional) and
+  a note that enabling the plugin changes nothing on the system.
+
 ## 1.8.2
 
 - Music backdrop: opening onto the music page brings the colors in with the card (no black

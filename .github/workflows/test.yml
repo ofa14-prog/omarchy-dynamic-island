@@ -1,0 +1,27 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Manifest is valid JSON
+        run: python -c "import json; m = json.load(open('manifest.json')); assert m['schemaVersion'] == 1 and m['entryPoints']['service']"
+      - name: Every QML Text sets a safe textFormat
+        run: python tests/check_qml.py
+      - name: Every UI string is translated (en, es, ru)
+        run: python tests/check_i18n.py
+      - name: Helper scripts compile
+        run: python -m py_compile bin/dynamic-island-hook bin/dynamic-island-agent-setup bin/dynamic-island-transcript
+      - name: Shell scripts parse
+        run: |
+          for f in bin/dynamic-island-focus bin/dynamic-island-send bin/dynamic-island-bar-setup bin/dynamic-island-claude-setup; do
+            if head -1 "$f" | grep -q bash; then bash -n "$f"; else sh -n "$f"; fi
+          done

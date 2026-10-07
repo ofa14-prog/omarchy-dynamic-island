@@ -81,11 +81,18 @@ Page {
       }
 
       // Icon + label measured as one block and centered in the segment.
+      // Long labels (some languages) step down instead of spilling over:
+      // first a 12 px font, then no icon, then an ellipsis.
+      readonly property real room: strip.segment - 14
+      TextMetrics { id: wide; font.family: Theme.font; font.pixelSize: 13; font.weight: Font.DemiBold; text: tab.info.name }
+      readonly property int fontSize: 25 + wide.advanceWidth <= room ? 13 : 12
+      readonly property bool showIcon: 25 + Math.min(wide.advanceWidth, label.implicitWidth) <= room
       Item {
         anchors.centerIn: parent
-        width: 18 + 7 + Math.ceil(label.implicitWidth)
+        width: (tab.showIcon ? 25 : 0) + label.width
         height: 18
         Icon {
+          visible: tab.showIcon
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
           size: 18
@@ -97,8 +104,9 @@ Page {
           id: label
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
+          width: Math.min(implicitWidth, tab.room - (tab.showIcon ? 25 : 0))
           text: tab.info.name
-          font.pixelSize: 13
+          font.pixelSize: tab.fontSize
           strong: tab.current
           color: tab.current ? Theme.fg : Theme.secondary
           Behavior on color { ColorAnimation { duration: Theme.ms(160) } }
