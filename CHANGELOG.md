@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.1
+
+- Music backdrop: no more square-cornered color block while the island morphs (the blur drew
+  past the card, and the colors kept fading while the shape shrank). The colors now appear
+  once the card has finished opening, vanish the instant it closes, and cross-fade softly
+  (900 ms) between tabs.
+
 ## 1.8.0
 
 - Music page backdrop: open on the music tab, the card fills with the artwork's colors as

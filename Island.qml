@@ -984,12 +984,23 @@ Item {
           Item {
             id: musicBackdrop
             anchors.fill: parent
-            readonly property bool on: island.cfg("ambient") && island.mode === "expanded"
+            // Shown only on a settled, open card: it appears once the island
+            // has finished opening and vanishes the instant it starts to
+            // close, so it never draws over the shape while it morphs.
+            property bool settled: false
+            readonly property bool expanded: island.mode === "expanded"
+            onExpandedChanged: { settled = false; if (expanded) settleTimer.restart() }
+            Timer { id: settleTimer; interval: 420; onTriggered: musicBackdrop.settled = musicBackdrop.expanded }
+            readonly property bool on: island.cfg("ambient") && expanded && settled
               && island.page === "music" && island.music.available
             readonly property bool moving: on && !Theme.reduceMotion
             opacity: on ? 1 : 0
-            visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: Theme.ms(600); easing.type: Easing.InOutQuad } }
+            visible: opacity > 0.005
+            // Between tabs: a slow, soft cross-fade. Closing: no fade at all.
+            Behavior on opacity {
+              enabled: musicBackdrop.expanded && musicBackdrop.settled
+              NumberAnimation { duration: Theme.ms(900); easing.type: Easing.InOutSine }
+            }
 
             property color c1: Qt.darker(island.music.ambient[0], 1.5)
             property color c2: Qt.darker(island.music.ambient[1], 1.5)
@@ -1047,7 +1058,9 @@ Item {
               id: blobs
               anchors.fill: parent
               visible: false
-              layer.enabled: musicBackdrop.visible
+              // Kept ready while the card is open, so a fade-in never starts
+              // with an unblurred frame.
+              layer.enabled: musicBackdrop.expanded
               // Rendered small and scaled up: blurring a low-resolution
               // texture gives the very soft, edgeless look.
               layer.textureSize: Qt.size(Math.max(8, Math.round(width / 8)), Math.max(8, Math.round(height / 8)))
@@ -1077,7 +1090,7 @@ Item {
               anchors.fill: parent
               radius: shape.radius
               visible: false
-              layer.enabled: musicBackdrop.visible
+              layer.enabled: musicBackdrop.expanded
             }
             MultiEffect {
               anchors.fill: parent
@@ -1085,6 +1098,8 @@ Item {
               blurEnabled: true
               blur: 1
               blurMax: 64
+              // No padding: the effect must not draw past the card.
+              autoPaddingEnabled: false
               maskEnabled: true
               maskSource: backdropMask
               opacity: 0.7
