@@ -47,7 +47,8 @@ import "components/Agents.js" as Agents
 //   music playing                            ambient glow in the artwork's
 //                                            colors, moving with the sound
 //                                            when cava is installed
-//   shell (re)start                          hidden until the bar is measured,
+//   shell (re)start                          hidden until the bar's size has
+//                                            settled (it grows in steps),
 //                                            then drops in as a circle and
 //                                            springs open (intro)
 //   files on the shelf                       shelf bubble (count + fill ring);
@@ -582,6 +583,8 @@ Item {
   // island lines up with the stock 26 px bar, floating island bars, or any
   // replacement bar, unless compactHeight / topOffset are set explicitly.
   property var barGeom: null    // { y, h } of a top bar on the island's monitor
+  property int barStable: 0     // probes in a row that saw the same size
+  property bool barSettled: false
   Process {
     id: barProbe
     property string monitor: ""
@@ -604,7 +607,14 @@ Item {
           }
           // A bar that is reloading is briefly missing: keep the last fit
           // rather than snapping to the fallback size.
-          if (found) island.barGeom = found
+          if (!found) return
+          // A freshly started bar grows in steps (26 → 30 → its real size,
+          // over about half a second): only call it settled once the same
+          // size comes back three times in a row.
+          var same = island.barGeom && island.barGeom.y === found.y && island.barGeom.h === found.h
+          island.barStable = same ? island.barStable + 1 : 0
+          if (!same) island.barGeom = found
+          if (island.barStable >= 2) island.barSettled = true
         } catch (e) {}
       }
     }
@@ -612,7 +622,7 @@ Item {
   Timer {
     // Right after a shell (re)start the bar may not exist yet: look again
     // quickly until it does, then only now and then.
-    interval: island.barGeom ? 10000 : 300
+    interval: island.barSettled ? 10000 : 250
     repeat: true
     running: true
     triggeredOnStart: true
@@ -641,15 +651,15 @@ Item {
   // shows at a wrong, squashed size), then drops in from above the screen as
   // a small circle and springs open into the island.
   //   hidden → drop (circle falls into place) → done (morphs to full width)
-  readonly property bool geometryKnown: barGeom !== null
+  readonly property bool geometryKnown: barSettled
     || (typeof cfg("compactHeight") === "number" && typeof cfg("topOffset") === "number")
   property string intro: "hidden"
   readonly property bool introDone: intro === "done"
   property real introY: 0
   onGeometryKnownChanged: if (geometryKnown) introStart.restart()
   Timer {
-    // Bar never found (none, or a different one): start anyway.
-    interval: 2500
+    // Bar never found or never still (none, or a different one): start anyway.
+    interval: 4000
     running: island.intro === "hidden"
     onTriggered: introStart.restart()
   }

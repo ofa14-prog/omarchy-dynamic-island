@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2
+
+- Fixed the squashed island after a manual shell restart: a starting bar grows in steps
+  (26 → 30 → its real height), and the first step was taken as final. The island now waits
+  until the bar's size has been the same for three probes in a row before dropping in.
+
 ## 1.6.1
 
 - The refresh button on Home now restarts the Omarchy shell on click; right-click only clears
