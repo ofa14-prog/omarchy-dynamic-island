@@ -11,6 +11,10 @@
   fails on any `Text` without a safe `textFormat`.
 - The shelf only deletes clipboard files it saved itself (no `..` paths).
 - Restart uses `omarchy-restart-shell` only.
+- Bounded reads: clipboard file lists (64 KiB, 24 entries), pasted images (50 MiB) and text
+  (10 MiB); the agent feed's JSON is capped at 1 MiB.
+- `dynamic-island-bar-setup` writes backups and restores through a temp file and rename, so a
+  symlink at the destination is replaced, never written through.
 - CI: manifest, QML text safety, translation coverage, script syntax.
 - README: full dependency list (all part of Omarchy; `cava` and the timer sound optional) and
   a note that enabling the plugin changes nothing on the system.

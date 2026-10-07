@@ -14,9 +14,18 @@ set -euo pipefail
 config="$HOME/.config/omarchy/shell.json"
 backup="$config.bak.dynamic-island"
 
+# Copy through a temp file and rename into place: a symlink at the
+# destination is replaced, never written through.
+safe_copy() {
+  local tmp
+  tmp=$(mktemp "$2.XXXXXX")
+  cp -- "$1" "$tmp"
+  mv -f -- "$tmp" "$2"
+}
+
 if [[ ${1:-} == "--undo" ]]; then
   if [[ -f $backup ]]; then
-    cp "$backup" "$config"
+    safe_copy "$backup" "$config"
   else
     # There was no shell.json before: going back means Omarchy's defaults.
     rm -f "$config"
@@ -33,7 +42,7 @@ layout=$config
 [[ -f $layout ]] || layout="${OMARCHY_PATH:-/usr/share/omarchy}/config/omarchy/shell.json"
 [[ -f $layout ]] || { echo "Could not find the bar layout" >&2; exit 1; }
 
-[[ -f $config && ! -f $backup ]] && cp "$config" "$backup"
+[[ -f $config && ! -e $backup && ! -L $backup ]] && safe_copy "$config" "$backup"
 
 mapfile -t center < <(jq -r '.bar.layout.center[]?.id // empty' "$layout")
 if ((${#center[@]} == 0)); then

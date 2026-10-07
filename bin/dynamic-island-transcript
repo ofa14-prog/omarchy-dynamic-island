@@ -21,6 +21,7 @@ RESULT_LINES = 2
 FULL_LINES = 400        # cap per output even when showing everything
 
 CHUNK = 512 * 1024
+MAX_OUTPUT = 1024 * 1024    # bytes of JSON handed to the island
 MAX_BYTES = 16 * 1024 * 1024
 
 
@@ -234,7 +235,16 @@ def main():
                     break
     except OSError:
         pass
-    print(json.dumps(items[-count:], ensure_ascii=False))
+    # Bounded output: the shell reads all of it into memory. Oldest items go
+    # first until the JSON fits.
+    items = items[-count:]
+    out = json.dumps(items, ensure_ascii=False)
+    while len(out) > MAX_OUTPUT and len(items) > 1:
+        items = items[max(1, len(items) // 8):]
+        out = json.dumps(items, ensure_ascii=False)
+    if len(out) > MAX_OUTPUT:
+        out = "[]"
+    print(out)
 
 
 if __name__ == "__main__":

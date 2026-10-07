@@ -89,22 +89,25 @@ Item {
       dir="$1"
       types=$(wl-paste --list-types 2>/dev/null) || { echo empty; exit 0; }
       has() { printf '%s\n' "$types" | grep -qx "$1"; }
+      # Bounded: at most 64 KiB of the list and the shelf's 24 entries.
       if has text/uri-list; then
-        echo files; wl-paste -n -t text/uri-list | tr -d '\r' | grep '^file://'; exit 0
+        echo files; wl-paste -n -t text/uri-list | head -c 65536 | tr -d '\r' | grep '^file://' | head -n 24; exit 0
       fi
       if has x-special/gnome-copied-files; then
-        echo files; wl-paste -n -t x-special/gnome-copied-files | grep '^file://'; exit 0
+        echo files; wl-paste -n -t x-special/gnome-copied-files | head -c 65536 | grep '^file://' | head -n 24; exit 0
       fi
       mkdir -p "$dir"
       img=$(printf '%s\n' "$types" | grep -m1 '^image/')
       if [ -n "$img" ]; then
         ext=\${img#image/}; ext=\${ext%%+*}; [ "$ext" = jpeg ] && ext=jpg
-        tmp="$dir/.paste"; wl-paste -t "$img" > "$tmp" || exit 0
+        # Up to 50 MiB; anything bigger is dropped rather than half-saved.
+        tmp="$dir/.paste"; wl-paste -t "$img" | head -c 52428801 > "$tmp" || exit 0
+        [ "$(stat -c %s "$tmp")" -le 52428800 ] || { rm -f "$tmp"; echo empty; exit 0; }
         f="$dir/Pano-$(sha1sum "$tmp" | cut -c1-8).$ext"
         mv -f "$tmp" "$f"; echo image; echo "$f"; exit 0
       fi
       if printf '%s\n' "$types" | grep -q '^text/plain'; then
-        tmp="$dir/.paste"; wl-paste -n -t text/plain > "$tmp" || exit 0
+        tmp="$dir/.paste"; wl-paste -n -t text/plain | head -c 10485760 > "$tmp" || exit 0
         [ -s "$tmp" ] || { rm -f "$tmp"; echo empty; exit 0; }
         # A copied path is the file itself.
         p=$(head -c 4096 "$tmp")

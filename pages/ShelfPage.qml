@@ -117,7 +117,7 @@ Page {
           width: 62; height: 56
           radius: 8
           visible: tile.modelData.isImage
-          source: tile.modelData.isImage ? "file://" + tile.modelData.path : ""
+          source: tile.modelData.isImage ? "file://" + tile.modelData.path.split("/").map(encodeURIComponent).join("/") : ""
           placeholder: "image"
         }
         Column {
