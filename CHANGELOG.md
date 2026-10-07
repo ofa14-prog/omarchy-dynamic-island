@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+
+- Ambient light: an artwork-colored glow around the island while music plays, pulsing with
+  the sound through cava (optional; `services/AudioLevel.qml`). cava runs only while music
+  plays and the island is on screen. Config: `ambient`, `ambientAudio`.
+- `omarchy-shell dynamicisland status` reports the ambient state and audio level.
+
 ## 1.4.0
 
 - Message box on the agent page (Claude Code, Codex): send a message to the watched session

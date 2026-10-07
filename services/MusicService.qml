@@ -62,6 +62,21 @@ Item {
     return Qt.hsva(best.hsvHue < 0 ? 0 : best.hsvHue, Math.min(best.hsvSaturation, 0.75), Math.max(best.hsvValue, 0.85), 1)
   }
 
+  // Ambient glow around the island: the two most vivid, clearly different
+  // colors of the artwork (left and right), lifted so they glow on black.
+  readonly property var ambient: {
+    var colors = (quantizer.colors || []).filter(c => c.hsvValue >= 0.18)
+    var lift = c => Qt.hsva(c.hsvHue < 0 ? 0 : c.hsvHue, Math.min(1, c.hsvSaturation * 1.15), Math.max(c.hsvValue, 0.8), 1)
+    if (!colors.length) return [accent, accent]
+    colors.sort((a, b) => (b.hsvSaturation * 0.75 + b.hsvValue * 0.25) - (a.hsvSaturation * 0.75 + a.hsvValue * 0.25))
+    var first = colors[0], second = null
+    for (var i = 1; i < colors.length && !second; i++) {
+      var dh = Math.abs(colors[i].hsvHue - first.hsvHue)
+      if (Math.min(dh, 1 - dh) > 0.07 || Math.abs(colors[i].hsvValue - first.hsvValue) > 0.3) second = colors[i]
+    }
+    return [lift(first), lift(second || first)]
+  }
+
   // Last time something stopped playing, so a pause doesn't instantly drop
   // the live activity.
   property double lastPlayingAt: 0

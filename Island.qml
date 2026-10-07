@@ -44,6 +44,9 @@ import "components/Agents.js" as Agents
 //   message typed on the agent page          sent to the session's prompt
 //                                            (tmux, or its terminal is focused
 //                                            and typed into); banner after
+//   music playing                            ambient glow in the artwork's
+//                                            colors, moving with the sound
+//                                            when cava is installed
 //   files on the shelf                       shelf bubble (count + fill ring);
 //                                            clicking it shelves the clipboard
 //   pointer hover / leave                    opens after hoverDelay / closes
@@ -86,6 +89,8 @@ Item {
     peekOnAgentDone: true,
     autoExpandPermission: true,
     hideOnFullscreen: true,
+    ambient: true,          // artwork-colored glow around the island while music plays
+    ambientAudio: true,     // …breathing with the sound (needs cava)
     shortcuts: [],
     agent: "",
     agentQuietSeconds: 180
@@ -302,6 +307,12 @@ Item {
   }
   DefaultApps { id: appsSvc }
   RecordingService { id: recordingSvc }
+  AudioLevel {
+    id: audioSvc
+    active: island.ambientOn && island.cfg("ambientAudio") && !Theme.reduceMotion
+  }
+  readonly property alias audio: audioSvc
+  readonly property bool ambientOn: cfg("ambient") && musicLive && !fullscreenHidden
 
   readonly property alias agents: agentsSvc
   readonly property alias music: musicSvc
@@ -718,7 +729,8 @@ Item {
     }
     function status(): string {
       return JSON.stringify({ agent: island.agentId, mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,
-        pending: agents.pending.length, sessions: agents.sessionList.length, listening: agents.listening })
+        pending: agents.pending.length, sessions: agents.sessionList.length, listening: agents.listening,
+        ambient: island.ambientOn, audio: island.audio.active ? Math.round(island.audio.level * 100) / 100 : -1 })
     }
   }
 
@@ -813,6 +825,46 @@ Item {
           value: island.mode === "compact" && hover.hovered
             ? Math.max(-1, Math.min(1, (hover.point.position.x - stage.width / 2) / (stage.width / 2))) * 3.5
             : 0
+        }
+
+        // Ambient light, like YouTube's ambient mode: the artwork's colors
+        // glow softly out of the island's edges while music plays (left and
+        // right take the two most vivid colors) and breathe with the sound
+        // when cava is installed. Kept small: a halo, not a lamp.
+        Item {
+          id: ambient
+          anchors.fill: shape
+          opacity: island.ambientOn ? (island.mode === "expanded" ? 0.55 : 1) : 0
+          visible: opacity > 0.01
+          Behavior on opacity { NumberAnimation { duration: Theme.ms(700); easing.type: Easing.InOutQuad } }
+
+          readonly property bool moving: island.audio.available && island.audio.active
+          readonly property real level: moving ? island.audio.level : 0.4
+          readonly property real beat: moving ? island.audio.beat : 0
+          readonly property real strength: Math.min(1, 0.32 + level * 0.6 + beat * 0.45)
+          property color leftColor: island.music.ambient[0]
+          property color rightColor: island.music.ambient[1]
+          Behavior on leftColor { ColorAnimation { duration: 1200 } }
+          Behavior on rightColor { ColorAnimation { duration: 1200 } }
+
+          RectangularShadow {
+            x: 0
+            width: Math.round(parent.width * 0.62)
+            height: parent.height
+            radius: shape.radius
+            blur: 12 + ambient.level * 16
+            spread: ambient.level * 5 + ambient.beat * 4
+            color: Qt.rgba(ambient.leftColor.r, ambient.leftColor.g, ambient.leftColor.b, ambient.strength * 0.9)
+          }
+          RectangularShadow {
+            x: Math.round(parent.width * 0.38)
+            width: parent.width - x
+            height: parent.height
+            radius: shape.radius
+            blur: 12 + ambient.level * 16
+            spread: ambient.level * 5 + ambient.beat * 4
+            color: Qt.rgba(ambient.rightColor.r, ambient.rightColor.g, ambient.rightColor.b, ambient.strength * 0.9)
+          }
         }
 
         // Soft drop shadow, only once the island leaves the bar.

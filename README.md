@@ -40,6 +40,11 @@ right from the island.
   the island against its own terminal prompt: answer in either place, the other one closes.
 - **Timer**: countdown (+1 min, pause, repeat) and stopwatch, with a chime when time is up.
 - **Screen recording**: Omarchy's recorder shows as the red recording activity; click to stop.
+- **Ambient light**: while music plays, the artwork's colors glow softly out of the island's
+  edges, like YouTube's ambient mode (left and right take its two most vivid colors). With
+  [cava](https://github.com/karlstav/cava) installed (`sudo pacman -S cava`) the glow breathes with
+  the sound; without it, it holds still. Turn off with `"ambient": false` (or just the movement
+  with `"ambientAudio": false`).
 - **Shelf**: drop files on the island to park them, drag them back out into any app later. While
   it holds anything, a shelf bubble shows how many items and how full it is; click the bubble to
   put what you copied on the shelf (files from Files, or a copied image or text, saved as a file).

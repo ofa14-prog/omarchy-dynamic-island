@@ -38,6 +38,10 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   sorusuyla yarışır: hangisinden cevap verirseniz diğeri kapanır.
 - **Sayaç**: geri sayım (+1 dk, duraklat, tekrarla) ve kronometre; süre dolunca ses.
 - **Ekran kaydı**: Omarchy kaydı kırmızı kayıt etkinliği olarak görünür; tıklayınca durur.
+- **Ambiyans ışığı**: müzik çalarken kapak resminin renkleri adanın kenarlarından hafifçe dışarı
+  süzülür, YouTube'un ambiyans modu gibi (sol ve sağ, en canlı iki rengi alır). `cava` kuruluysa
+  (`sudo pacman -S cava`) ışık sesle birlikte nefes alır; değilse sabit durur. Kapatmak için
+  `"ambient": false` (yalnızca hareketi kapatmak için `"ambientAudio": false`).
 - **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin. Rafta bir şey
   varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir; yuvarlağa
   tıklamak kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan görsel/metin).
