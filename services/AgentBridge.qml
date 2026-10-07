@@ -644,6 +644,8 @@ Item {
   property string previewId: ""
   property var previewItems: []
   property string previewOf: ""        // session the items belong to
+  property int previewCount: 40        // transcript items to fetch (scrollback)
+  property int previewLines: 2         // output lines shown per tool result
 
   function canPreview(s) { return !!s && !!s.transcript && previewAgents.indexOf(s.agent) !== -1 }
 
@@ -677,7 +679,7 @@ Item {
       var s = bridge.sessions[bridge.previewId]
       if (!bridge.canPreview(s) || previewProbe.running) return
       previewProbe.forId = s.id
-      previewProbe.command = [bridge.pluginDir + "/bin/dynamic-island-transcript", s.agent, s.transcript, "12"]
+      previewProbe.command = [bridge.pluginDir + "/bin/dynamic-island-transcript", s.agent, s.transcript, String(bridge.previewCount), String(bridge.previewLines)]
       previewProbe.running = true
     }
   }

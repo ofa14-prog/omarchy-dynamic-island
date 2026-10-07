@@ -437,6 +437,7 @@ Item {
   property bool pointerVisited: false
   property bool dragHover: false
   readonly property bool alertActive: agents.pending.length > 0 || timer.ringing
+  property bool feedExpanded: false    // the agent page's live feed, taller
   property bool composing: false       // a message is being typed on the agent page
   readonly property bool locked: (page === "permission" && agents.pending.length > 0) || (page === "timer" && timer.ringing) || dragHover || composing
 
@@ -805,7 +806,9 @@ Item {
       return screens.length ? screens[0] : null
     }
     anchors { top: true; left: true; right: true }
-    implicitHeight: 520
+    // Tall enough for the biggest page (the agent page with its feed
+    // expanded); the surface is transparent and clicks pass through.
+    implicitHeight: 720
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "dynamic-island"

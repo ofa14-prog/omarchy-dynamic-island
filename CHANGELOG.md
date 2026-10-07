@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0
+
+- Player switcher on the music page: with several media players, a chip next to the transport
+  buttons names the one shown and opens a list to pick the one to follow (kept until it
+  closes; "Automatic" follows whatever plays). Right-click or scroll it for the next one.
+- Agent live feed: scrollable (wheel or drag), follows new output only while at the bottom,
+  a jump-to-newest button, and an expand button for a taller feed with more output per
+  command. Terminal color codes are stripped from output.
+
 ## 1.6.2
 
 - Fixed the squashed island after a manual shell restart: a starting bar grows in steps

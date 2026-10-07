@@ -9,22 +9,56 @@ Item {
   property bool tracking: false   // a view shows the progress bar
 
   readonly property var players: Mpris.players ? Mpris.players.values : []
+  // The player you picked on the music page. It stays the shown one while it
+  // exists, whatever else starts or stops; when it goes away the choice
+  // falls back to automatic (the one playing).
   property string preferredKey: ""
 
   function keyOf(p) { return p ? (p.dbusName || p.identity || "") : "" }
   function hasTrack(p) { return p && (p.trackTitle || p.trackArtist) }
 
+  // Every player with something loaded, playing ones first. Browsers may
+  // also expose a playerctld proxy that mirrors a real player: left out.
+  readonly property var choices: {
+    var list = players.filter(p => hasTrack(p) && keyOf(p).indexOf("playerctld") === -1)
+    if (!list.length) list = players.filter(p => hasTrack(p))
+    return list.slice().sort((a, b) => (b.isPlaying ? 1 : 0) - (a.isPlaying ? 1 : 0))
+  }
+  readonly property bool pinned: preferredKey !== "" && choices.some(p => keyOf(p) === preferredKey)
+
   readonly property var player: {
-    var list = players.filter(p => hasTrack(p))
+    var list = choices
     if (list.length === 0) return null
     if (preferredKey) {
       var pref = list.filter(p => keyOf(p) === preferredKey)
       if (pref.length) return pref[0]
     }
     var playing = list.filter(p => p.isPlaying)
-    // Browsers expose a playerctld-style proxy as well; prefer real players.
-    playing.sort((a, b) => (keyOf(a).indexOf("playerctld") !== -1) - (keyOf(b).indexOf("playerctld") !== -1))
     return playing.length ? playing[0] : list[0]
+  }
+
+  function select(p) { preferredKey = keyOf(p) }
+  function unpin() { preferredKey = "" }
+  // Next player in the list (wraps), for a quick cycle.
+  function cycle() {
+    if (choices.length < 2) return
+    var i = choices.indexOf(player)
+    select(choices[(i + 1) % choices.length])
+  }
+  // A readable name: the app, plus the tab or track when several share it.
+  function nameOf(p) {
+    if (!p) return ""
+    var app = p.identity || keyOf(p).replace("org.mpris.MediaPlayer2.", "").split(".")[0]
+    return app.charAt(0).toUpperCase() + app.slice(1)
+  }
+  function iconOf(p) {
+    if (!p) return ""
+    void DesktopEntries.applications.values   // entries load asynchronously
+    var id = p.desktopEntry || ""
+    var entry = (id && (DesktopEntries.byId(id) || DesktopEntries.heuristicLookup(id)))
+      || (p.identity && DesktopEntries.heuristicLookup(p.identity))
+      || DesktopEntries.heuristicLookup(keyOf(p).replace("org.mpris.MediaPlayer2.", "").split(".")[0])
+    return entry && entry.icon ? Quickshell.iconPath(entry.icon, true) : ""
   }
 
   readonly property bool available: player !== null

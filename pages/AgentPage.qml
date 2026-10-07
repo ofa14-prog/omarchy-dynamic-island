@@ -30,6 +30,16 @@ Page {
   }
   Binding {
     target: page.agents
+    property: "previewCount"
+    value: page.island.feedExpanded ? 120 : 40
+  }
+  Binding {
+    target: page.agents
+    property: "previewLines"
+    value: page.island.feedExpanded ? 8 : 2
+  }
+  Binding {
+    target: page.agents
     property: "previewId"
     value: page.shown && page.previewSession ? page.previewSession.id : ""
   }
@@ -64,7 +74,7 @@ Page {
           break
       }
     }
-    return out.slice(-9)
+    return out.slice(-400)
   }
 
   function working(s) {
@@ -289,21 +299,45 @@ Page {
     }
 
     // ---- live feed
+    // Compact by default; the corner button makes it taller. Either way it
+    // scrolls (wheel or drag) and follows new output while you are at the
+    // bottom; scroll up to read back and it stays where you left it.
     Rectangle {
       id: feed
       readonly property var s: page.previewSession
       readonly property bool busy: s !== null && agents.isBusy(s)
       readonly property var lines: page.feedLines(s && agents.previewOf === s.id ? agents.previewItems : [], s ? s.agent : "", busy)
+      readonly property bool big: island.feedExpanded
+      onLinesChanged: sync()
+      Component.onCompleted: sync()
+      function sync() {
+        var src = lines
+        for (var i = 0; i < src.length; i++) {
+          var l = src[i]
+          var row = { mark: l.g || "", body: l.t || "", tone: String(l.c), markTone: l.gc ? String(l.gc) : "",
+            bold: !!l.strong, nested: !!l.indent }
+          if (i < feedModel.count) {
+            var old = feedModel.get(i)
+            if (old.body !== row.body || old.mark !== row.mark || old.tone !== row.tone || old.markTone !== row.markTone) feedModel.set(i, row)
+          } else feedModel.append(row)
+        }
+        if (feedModel.count > src.length) feedModel.remove(src.length, feedModel.count - src.length)
+        if (feedList.follow) Qt.callLater(feedList.positionViewAtEnd)
+      }
       visible: s !== null
       width: parent.width
-      height: 168
+      height: big ? 340 : 168
       radius: 16
       color: Qt.rgba(1, 1, 1, 0.05)
       border.width: 1
       border.color: Theme.hairline
+      Behavior on height {
+        enabled: !Theme.reduceMotion
+        SpringAnimation { spring: 4; damping: 0.42; epsilon: 0.3 }
+      }
 
       Accessible.role: Accessible.StaticText
-      Accessible.name: I18n.t("Canlı akış") + ": " + lines.map(l => l.t).join(". ")
+      Accessible.name: I18n.t("Canlı akış") + ": " + lines.slice(-8).map(l => l.t).join(". ")
 
       Row {
         id: feedHead
@@ -330,17 +364,117 @@ Page {
         }
       }
 
-      // Newest at the bottom; older lines scroll off under the header.
-      Item {
+      // Back to the newest line, when scrolled up.
+      IslandButton {
+        anchors.right: sizeButton.left
+        anchors.rightMargin: 4
+        anchors.verticalCenter: sizeButton.verticalCenter
+        visible: !feedList.atYEnd && feedList.contentHeight > feedList.height
+        size: 22
+        iconSize: 12
+        icon: "chevron-up"
+        rotation: 180
+        accessibleName: I18n.t("En alta git")
+        onClicked: { feedList.follow = true; feedList.positionViewAtEnd() }
+      }
+      IslandButton {
+        id: sizeButton
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        y: 5
+        size: 22
+        iconSize: 12
+        icon: "chevron-up"
+        rotation: feed.big ? 0 : 180
+        accessibleName: feed.big ? I18n.t("Akışı küçült") : I18n.t("Akışı büyüt")
+        onClicked: island.feedExpanded = !island.feedExpanded
+      }
+
+      ListView {
+        id: feedList
         anchors.top: feedHead.bottom
-        anchors.topMargin: 6
+        anchors.topMargin: 7
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 10
+        anchors.bottomMargin: 8
         anchors.left: parent.left
         anchors.leftMargin: 14
         anchors.right: parent.right
-        anchors.rightMargin: 14
+        anchors.rightMargin: 8
         clip: true
+        spacing: 2
+        // Updated row by row (not replaced) so the scroll position holds
+        // while new output arrives.
+        model: ListModel { id: feedModel }
+        boundsBehavior: Flickable.StopAtBounds
+        flickDeceleration: 2400
+        // Sticks to the newest line until you scroll up.
+        property bool follow: true
+        onMovementEnded: follow = atYEnd
+        onContentHeightChanged: if (follow) Qt.callLater(positionViewAtEnd)
+        onHeightChanged: if (follow) Qt.callLater(positionViewAtEnd)
+        Component.onCompleted: positionViewAtEnd()
+        WheelHandler {
+          // Wheel scrolls the feed by lines, not the island.
+          onWheel: event => {
+            feedList.contentY = Math.max(0, Math.min(feedList.contentHeight - feedList.height,
+              feedList.contentY - event.angleDelta.y / 120 * 51))
+            feedList.follow = feedList.atYEnd
+          }
+        }
+
+        delegate: Item {
+          id: lineItem
+          required property string mark
+          required property string body
+          required property string tone
+          required property string markTone
+          required property bool bold
+          required property bool nested
+          // Same shape as a feedLines() entry, for the drawing below.
+          readonly property var modelData: ({ g: mark, t: body, c: tone, gc: markTone, strong: bold, indent: nested })
+          width: ListView.view.width - 6
+          height: 15
+          Item {
+            id: glyph
+            x: modelData.indent ? 12 : 0
+            width: 14
+            height: parent.height
+            // Bullets are drawn, not typed: fonts disagree on ● and ⏺.
+            readonly property bool dot: modelData.g === "●" || modelData.g === "•"
+            Rectangle {
+              visible: glyph.dot
+              anchors.verticalCenter: parent.verticalCenter
+              x: 1
+              width: modelData.g === "●" ? 7 : 5
+              height: width
+              radius: width / 2
+              color: modelData.gc || modelData.c
+            }
+            Text {
+              visible: !glyph.dot
+              anchors.verticalCenter: parent.verticalCenter
+              text: modelData.g
+              color: modelData.gc || modelData.c
+              font.family: Theme.mono
+              font.pixelSize: 11
+              renderType: Text.NativeRendering
+            }
+          }
+          Text {
+            anchors.left: glyph.right
+            anchors.leftMargin: 3
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: modelData.t
+            color: modelData.c
+            elide: Text.ElideRight
+            textFormat: Text.PlainText
+            font.family: Theme.mono
+            font.pixelSize: 12
+            font.weight: modelData.strong ? Font.DemiBold : Font.Normal
+            renderType: Text.NativeRendering
+          }
+        }
 
         Label {
           visible: feed.lines.length === 0
@@ -349,68 +483,18 @@ Page {
           font.pixelSize: 12
           color: Theme.tertiary
         }
-
-        Column {
-          anchors.bottom: parent.bottom
-          width: parent.width
-          spacing: 2
-          Repeater {
-            model: feed.lines
-            delegate: Item {
-              required property var modelData
-              width: parent.width
-              height: 15
-              Item {
-                id: glyph
-                x: modelData.indent ? 12 : 0
-                width: 14
-                height: parent.height
-                // Bullets are drawn, not typed: fonts disagree on ● and ⏺.
-                readonly property bool dot: modelData.g === "●" || modelData.g === "•"
-                Rectangle {
-                  visible: glyph.dot
-                  anchors.verticalCenter: parent.verticalCenter
-                  x: 1
-                  width: modelData.g === "●" ? 7 : 5
-                  height: width
-                  radius: width / 2
-                  color: modelData.gc || modelData.c
-                }
-                Text {
-                  visible: !glyph.dot
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: modelData.g
-                  color: modelData.gc || modelData.c
-                  font.family: Theme.mono
-                  font.pixelSize: 11
-                  renderType: Text.NativeRendering
-                }
-              }
-              Text {
-                anchors.left: glyph.right
-                anchors.leftMargin: 3
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                text: modelData.t
-                color: modelData.c
-                elide: Text.ElideRight
-                textFormat: Text.PlainText
-                font.family: Theme.mono
-                font.pixelSize: 12
-                font.weight: modelData.strong ? Font.DemiBold : Font.Normal
-                renderType: Text.NativeRendering
-              }
-            }
-          }
-        }
       }
 
-      MouseArea {
-        anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
-        onClicked: { agents.focusTerminal(feed.s); island.collapse() }
-        Accessible.role: Accessible.Button
-        Accessible.name: I18n.t("Terminale git")
+      // Scroll position, thin and only while there is more than fits.
+      Rectangle {
+        visible: feedList.contentHeight > feedList.height + 1
+        anchors.right: parent.right
+        anchors.rightMargin: 4
+        y: feedList.y + feedList.visibleArea.yPosition * feedList.height
+        width: 3
+        height: Math.max(16, feedList.visibleArea.heightRatio * feedList.height)
+        radius: 1.5
+        color: Qt.rgba(1, 1, 1, 0.22)
       }
     }
 

@@ -3,7 +3,7 @@
 preview: the last prompts, replies, tool calls and their output, the way the
 agent's own terminal shows them.
 
-  dynamic-island-transcript <claude|codex> <transcript.jsonl> [count]
+  dynamic-island-transcript <claude|codex> <transcript.jsonl> [count] [lines-per-output]
 
 Prints one JSON array: [{"k": kind, "t": text, "d": detail, "err": bool}]
   kind  prompt | text | tool | result | interrupt
@@ -12,7 +12,12 @@ Only the file's tail is read, so it stays cheap on long sessions.
 
 import json
 import os
+import re
 import sys
+
+ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|[\x00-\x08\x0b-\x1f]")
+# Output lines per tool result (the feed asks for more when it is expanded).
+RESULT_LINES = 2
 
 CHUNK = 512 * 1024
 MAX_BYTES = 16 * 1024 * 1024
@@ -26,8 +31,9 @@ def one_line(s, limit=220):
     return s if len(s) <= limit else s[: limit - 1] + "…"
 
 
-def first_lines(s, n=2, limit=200):
-    lines = [l.rstrip() for l in str(s or "").replace("\r", "").split("\n")]
+def first_lines(s, n=None, limit=200):
+    n = n or RESULT_LINES
+    lines = [ANSI.sub("", l).rstrip() for l in str(s or "").replace("\r", "").split("\n")]
     lines = [l for l in lines if l.strip()]
     out = [one_line(l, limit) for l in lines[:n]]
     if len(lines) > n:
@@ -120,7 +126,7 @@ def claude(entries):
                 if not isinstance(p, dict):
                     continue
                 if p.get("type") == "text" and p.get("text", "").strip():
-                    items.append({"k": "text", "t": first_lines(p["text"], 2, 220)})
+                    items.append({"k": "text", "t": first_lines(p["text"], None, 220)})
                 elif p.get("type") == "tool_use":
                     tool = {"k": "tool", "t": p.get("name", "Tool"), "d": tool_args(p.get("input"))}
                     tools[p.get("id")] = tool
@@ -163,7 +169,7 @@ def codex(entries):
                     continue          # environment context and instructions
                 items.append({"k": "prompt", "t": one_line(s)})
             elif p.get("role") == "assistant" and s.strip():
-                items.append({"k": "text", "t": first_lines(s, 2, 220)})
+                items.append({"k": "text", "t": first_lines(s, None, 220)})
         elif pt in ("function_call", "custom_tool_call"):
             args = p.get("arguments") if pt == "function_call" else p.get("input")
             try:
@@ -194,6 +200,8 @@ def main():
         raise SystemExit(__doc__)
     agent, path = sys.argv[1], sys.argv[2]
     count = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+    global RESULT_LINES
+    RESULT_LINES = max(1, int(sys.argv[4])) if len(sys.argv) > 4 else 2
     parse = codex if agent == "codex" else claude
     # Step back from the end until there is enough to show: a pasted image
     # or a long tool output can make a single entry megabytes long.
