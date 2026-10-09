@@ -33,9 +33,14 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
 | **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri |
 | **Uyarılar** | Claude izin isterse ya da süre dolarsa ada kendiliğinden açılır, cevaplanana kadar açık kalır |
 
-- **Ana sayfa**: saat, tarih ve pil; çalışan her ajan için bir kullanım kartı (logosu ve Claude
-  Code'daki gibi iki halka: 5 saat ve haftalık; hiçbiri çalışmıyorsa adanın ajanı; tıklayınca o
-  ajan açılır) ve *varsayılan* ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi
+- **Liquid Glass** (koyu): ada, yarıları ve baloncukları gerçek bir arka plan bulanıklığı üzerinde
+  tek bir yarı saydam cam yüzeydir; kenarlarda toplanan ışık ve imleci izleyen bir parlama vardır.
+  Sıvı gibi davranırlar: baloncuk adadan damla gibi kopar ve geri akar, ikiye bölünen yarılar
+  incelen bir köprüyle ayrılır, cam açılırken, kapanırken ve dokununca esner ve ışıldar. Bulanıklık
+  yalnızca adanın katmanı için çalışma anında kurulur; `"glass": false` hepsini kapatır,
+  `"glassOpacity"` camın koyuluğunu ayarlar.
+- **Ana sayfa**: saat, tarih ve pil; kurulu her ajan için bir kullanım kartı (logosu ve Claude
+  Code'daki gibi iki halka: 5 saat ve haftalık; çalışanlar önce; tıklayınca o ajan açılır) ve *varsayılan* ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi
   uygulama ikonlarıyla ızgara şeklinde kısayollar.
 - **Müzik**: tüm MPRIS oynatıcılar; kapak, sürüklenebilir ilerleme çubuğu, kontroller. Dalga formu kapak renginde.
   Müzik etkinliği yalnızca çalarken görünür; duraklatılınca ya da kapatılınca hemen kaybolur.
@@ -82,7 +87,8 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir. Raf açıkken
   **Ctrl+V** kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan
   görsel/metin). Bir dosyaya tek tıklamak onu panoya dosya olarak kopyalar, çift tıklamak açar,
-  sağ tık Dosyalar'da gösterir.
+  sağ tık Dosyalar'da gösterir. **Hepsini kopyala** raftaki tüm dosyaları tek seferde panoya koyar
+  (sağ tık: yollarını).
 - Claude Code'un kendi spinner'ı (`· ✢ * ✶ ✻ ✽`) ve durum parlaması canlı bir `claude` oturumundan
   alındı; diğer ajanlar kendi CLI'larının braille spinner'ını kullanır.
 - Kesirli ölçekte keskin: yazılar piksele hizalı, ikonlar ekranın gerçek piksel yoğunluğunda çizilir.

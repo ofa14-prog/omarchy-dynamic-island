@@ -1,0 +1,47 @@
+#!/bin/bash
+# Backdrop blur for the island's Liquid Glass, and nothing else.
+#
+#   dynamic-island-glass on    blur behind the island's layer only
+#   dynamic-island-glass off   put Hyprland's blur back as it was
+#
+# Runtime only (hyprctl eval): no config file is touched, and Hyprland's own
+# reload restores everything. If blur is off (Omarchy's default), it is
+# turned on with every window opted out (no_blur), so only the island's
+# layer is frosted; if you already use blur, only the layer rule is added.
+# The original values are kept in $XDG_RUNTIME_DIR/dynamic-island/.
+
+set -u
+command -v hyprctl >/dev/null || exit 0
+dir="${XDG_RUNTIME_DIR:-/tmp}/dynamic-island"
+saved="$dir/blur-before"
+mkdir -p -m 700 "$dir"
+
+opt() {
+  hyprctl getoption "decoration:blur:$1" -j 2>/dev/null |
+    jq -r 'if has("bool") then (if .bool then 1 else 0 end) else (.int // .float // empty) end'
+}
+
+case "${1:-}" in
+  on)
+    # Remember how blur was before the first change of this session.
+    if [[ ! -s $saved ]]; then
+      printf '%s %s %s %s %s\n' "$(opt enabled)" "$(opt size)" "$(opt passes)" "$(opt vibrancy)" "$(opt noise)" >"$saved"
+    fi
+    read -r was _ < "$saved"
+    if [[ $was != 1 ]]; then
+      hyprctl eval 'hl.window_rule({ match = { class = ".*" }, no_blur = true })' >/dev/null
+      hyprctl eval 'hl.config({ decoration = { blur = { enabled = true, size = 10, passes = 3, vibrancy = 0.25, noise = 0.02 } } })' >/dev/null
+    fi
+    hyprctl eval 'hl.layer_rule({ match = { namespace = "^dynamic-island$" }, blur = true, ignore_alpha = 0.32 })' >/dev/null
+    ;;
+  off)
+    [[ -s $saved ]] || exit 0
+    read -r was size passes vibrancy noise < "$saved"
+    if [[ $was != 1 ]]; then
+      hyprctl eval "hl.config({ decoration = { blur = { enabled = false, size = ${size:-8}, passes = ${passes:-1}, vibrancy = ${vibrancy:-0.1696}, noise = ${noise:-0.0117} } } })" >/dev/null
+    fi
+    hyprctl eval 'hl.layer_rule({ match = { namespace = "^dynamic-island$" }, blur = false })' >/dev/null
+    rm -f "$saved"
+    ;;
+  *) echo "usage: $0 on|off" >&2; exit 2 ;;
+esac

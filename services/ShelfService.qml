@@ -149,9 +149,12 @@ Item {
   }
   // One file onto the clipboard as a file (text/uri-list), so pasting in
   // Files, a browser upload or a chat app pastes the file itself.
-  function copyFile(path) {
-    if (copier.running) return false
-    copier.text = uriList([{ path: path }]) + "\r\n"
+  function copyFile(path) { return copyFiles([{ path: path }]) }
+  // Every file at once (or the given ones), as files.
+  function copyFiles(list) {
+    var files = list || items
+    if (!files.length || copier.running) return false
+    copier.text = uriList(files) + "\r\n"
     copier.command = ["wl-copy", "--type", "text/uri-list"]
     copier.stdinEnabled = true
     copier.running = true

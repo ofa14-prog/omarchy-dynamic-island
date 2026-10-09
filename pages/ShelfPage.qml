@@ -12,6 +12,8 @@ Page {
   implicitHeight: shelf.count === 0 ? 124 : 172
 
   onShownChanged: if (shown) shelf.pruneMissing()
+  readonly property bool allCopied: allCopiedTimer.running
+  Timer { id: allCopiedTimer; interval: 1400 }
 
   // ---- empty / drop target
   Rectangle {
@@ -233,13 +235,18 @@ Page {
       accessibleName: I18n.t("Panodakini rafa ekle")
       onClicked: shelf.addFromClipboard()
     }
+    // Copy all: every file on the clipboard as files (paste them anywhere at
+    // once); right-click copies their paths as text.
     IslandButton {
       size: 32
-      icon: "copy"
-      text: I18n.t("Yolları kopyala")
+      icon: page.allCopied ? "check" : "copy"
+      text: page.allCopied ? I18n.t("Kopyalandı") : I18n.t("Hepsini kopyala")
       fontSize: 13
-      accessibleName: I18n.t("Tüm dosya yollarını panoya kopyala")
-      onClicked: shelf.copyPaths()
+      tint: page.allCopied ? Theme.green : Theme.fg
+      accessibleName: I18n.t("Raftaki tüm dosyaları panoya kopyala")
+      hint: I18n.t("Sağ tık: yolları kopyala")
+      onClicked: if (shelf.copyFiles()) allCopiedTimer.restart()
+      onRightClicked: shelf.copyPaths()
     }
     IslandButton {
       size: 32

@@ -41,6 +41,8 @@ Item {
   z: -1
 
   readonly property bool hovered: mouse.containsMouse
+  // Drawn size and place, for the glass surface.
+  readonly property real bodyScale: body.scale * scale
 
   Behavior on x {
     enabled: !Theme.reduceMotion
@@ -97,8 +99,10 @@ Item {
     id: body
     anchors.fill: parent
     radius: width / 2
-    color: Theme.bg
-    border.width: 1
+    // With Liquid Glass the island's glass surface draws this body (so it
+    // can merge with the island); the bubble only holds its content.
+    color: island.glassOn ? "transparent" : Theme.bg
+    border.width: island.glassOn ? 0 : 1
     border.color: Qt.rgba(1, 1, 1, 0.06)
     scale: (mouse.pressed ? 0.88 : bubble.hovered ? 1.08 : 1) * bubble.pop
     Behavior on scale {

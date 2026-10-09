@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.14.0
+
+- **Liquid Glass** (dark): the island, its split halves and the bubbles are drawn as one glass
+  surface by a custom shader (`shaders/liquid.frag`): translucent tint over a real backdrop blur,
+  edge lensing and a specular highlight that follows the pointer. Bodies merge through a smooth
+  minimum, so bubbles pinch off and flow back like droplets and split halves part with a bridge.
+  The glass flexes ("jelly") and lights up on open, close, peek, split and touch.
+- Backdrop blur for the island's layer only, at runtime (`bin/dynamic-island-glass`): blur on,
+  every window opted out, original values saved and restored with `"glass": false`; reapplied
+  after Hyprland reloads its config. No config file is written.
+- Home: usage cards for every installed agent (Antigravity included), running ones first.
+- Shelf: **Copy all** puts every shelf file on the clipboard as files (right-click: paths).
+
 ## 1.13.0
 
 - Home: quick-timer buttons removed; roomier spacing. Usage rings for every running agent (a card

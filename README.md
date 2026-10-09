@@ -34,8 +34,14 @@ right from the island.
 | **Expanded** | Home · Music · Claude · Timer · Shelf, as a segmented control |
 | **Alerts** | A Claude permission request or a finished timer opens the island and holds it open |
 
-- **Home**: time, date and battery; a usage card per running agent (its mark and two rings, 5-hour
-  and weekly, like Claude Code's; the island's agent when none runs; click one to open it); and a
+- **Liquid Glass** (dark): the island, its halves and its bubbles are one translucent glass surface
+  over a real backdrop blur, with light gathered along the edges and a specular highlight that
+  follows the pointer. They move like liquid: a bubble pinches off the island like a droplet and
+  flows back in, split halves part with a thinning bridge, and the glass flexes and lights up when
+  it opens, closes or is touched. The blur is set up at runtime for the island's layer only (see
+  "Liquid Glass" below); `"glass": false` turns it all off, `"glassOpacity"` sets how dark it is.
+- **Home**: time, date and battery; a usage card per installed agent (its mark and two rings,
+  5-hour and weekly, like Claude Code's; running agents first; click one to open it); and a
   grid of shortcuts to your *default* agent, editor, browser, file manager and terminal (with their
   own app icons).
 - **Music**: any MPRIS player; artwork, a draggable scrubber, transport. The waveform takes the artwork's color.
@@ -86,7 +92,8 @@ right from the island.
   it holds anything, a shelf bubble shows how many items and how full it is. With the shelf open,
   **Ctrl+V** puts what you copied on it (files from Files, or a copied image or text, saved as a
   file). Click a file to copy it to the clipboard (paste it as a file anywhere), double-click to
-  open it, right-click to show it in Files.
+  open it, right-click to show it in Files. **Copy all** puts every file on the clipboard at once
+  (right-click: their paths).
 - Claude Code's own spinner (`· ✢ * ✶ ✻ ✽`) and status shimmer, captured from a live `claude`
   session; other agents use their CLI's braille spinner.
 - Sharp at fractional scaling: text is hinted and icons are rasterized at the screen's real pixel
@@ -221,6 +228,21 @@ Optional `~/.config/omarchy/dynamic-island.json`; changes apply live.
 | `peekOnTrackChange` / `peekOnAgentDone` | `true` | |
 | `agentQuietSeconds` | `180` | A busy turn with no sign of life for this long shows as "quiet" |
 | `shortcuts` | `[]` | Empty uses your defaults. Example: `[{"icon":"globe","label":"Web","command":["omarchy-launch-browser"]}]`. Actions: `agent`, `editor`, `browser`, `files`, `terminal`, `screenshot`, `stopwatch`, `{"action":"timer","seconds":600}`, `page:<name>` |
+
+## Liquid Glass
+
+The glass is drawn by `shaders/liquid.frag` (compiled to `liquid.frag.qsb` with Qt's `qsb`): one
+signed-distance field for the island, its halves and the bubbles, joined with a smooth minimum so
+they merge like liquid, shaded with edge lensing and a pointer-following specular highlight. Text
+and icons are drawn above it and stay pixel-sharp.
+
+The frosted backdrop comes from Hyprland. Omarchy ships with blur off, so
+`bin/dynamic-island-glass on` turns blur on at runtime with every window opted out (`no_blur`) and
+blurs only the `dynamic-island` layer; if you already use blur, it only adds that layer rule.
+Nothing is written to your config; `"glass": false` (or `dynamic-island-glass off`) restores the
+values it saved, and Hyprland's own reload resets everything anyway. A program cannot see what is
+behind its own window, so true refraction of the background is not possible; the lensing is
+painted along the edges.
 
 ## Languages
 

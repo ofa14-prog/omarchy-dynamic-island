@@ -9,8 +9,8 @@ Page {
   property var island
   implicitHeight: col.implicitHeight + 8
 
-  // Agents whose usage cards are shown: the running ones, or the island's.
-  readonly property var usageAgents: island.runningAgents.length ? island.runningAgents : [island.agentId]
+  // Usage cards: every installed agent with usage data (running ones first).
+  readonly property var usageAgents: island.usageAgents
 
   component Gauge: Column {
     id: gauge
@@ -227,8 +227,8 @@ Page {
       }
     }
 
-    // ---- usage: one card per running agent (or the island's agent when
-    // none runs), its mark and two rings: the 5-hour and the weekly limit.
+    // ---- usage: one card per installed agent that reports usage (running
+    // ones first), its mark and two rings: the 5-hour and the weekly limit.
     Flow {
       id: usageFlow
       width: parent.width
@@ -245,14 +245,14 @@ Page {
           required property string modelData
           readonly property var u: island.agents.usageOf(modelData)
           readonly property color tint: island.profile(modelData).color
-          width: cardRow.implicitWidth + 28
+          width: cardRow.implicitWidth + 24
           height: 74
           radius: 20
           color: Theme.fill
           Row {
             id: cardRow
             anchors.centerIn: parent
-            spacing: 14
+            spacing: 11
             Icon {
               anchors.verticalCenter: parent.verticalCenter
               source: island.logoFor(card.modelData)

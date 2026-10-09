@@ -4,6 +4,10 @@
 .pragma library
 
 var en = {
+  "Kopyalandı": "Copied",
+  "Hepsini kopyala": "Copy all",
+  "Raftaki tüm dosyaları panoya kopyala": "Copy every file on the shelf to the clipboard",
+  "Sağ tık: yolları kopyala": "Right-click: copy the paths",
   "ya da Ctrl+V ile kopyaladığını ekle": "or press Ctrl+V to add what you copied",
   "Yapıştır": "Paste",
   "Tıkla: ajanları göster": "Click: show the agents",
@@ -176,6 +180,10 @@ var en = {
 }
 
 var es = {
+  "Kopyalandı": "Copiado",
+  "Hepsini kopyala": "Copiar todo",
+  "Raftaki tüm dosyaları panoya kopyala": "Copiar todos los archivos del estante al portapapeles",
+  "Sağ tık: yolları kopyala": "Clic derecho: copiar las rutas",
   "ya da Ctrl+V ile kopyaladığını ekle": "o pulsa Ctrl+V para añadir lo copiado",
   "Yapıştır": "Pegar",
   "Tıkla: ajanları göster": "Clic: mostrar los agentes",
@@ -348,6 +356,10 @@ var es = {
 }
 
 var ru = {
+  "Kopyalandı": "Скопировано",
+  "Hepsini kopyala": "Копировать всё",
+  "Raftaki tüm dosyaları panoya kopyala": "Скопировать все файлы с полки в буфер",
+  "Sağ tık: yolları kopyala": "Правый клик: скопировать пути",
   "ya da Ctrl+V ile kopyaladığını ekle": "или нажми Ctrl+V, чтобы добавить скопированное",
   "Yapıştır": "Вставить",
   "Tıkla: ajanları göster": "Клик: показать агентов",

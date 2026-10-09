@@ -20,8 +20,10 @@ jobs:
         run: python tests/check_i18n.py
       - name: Helper scripts compile
         run: python -m py_compile bin/dynamic-island-hook bin/dynamic-island-agent-setup bin/dynamic-island-transcript
+      - name: Compiled shader is present
+        run: test -s shaders/liquid.frag.qsb
       - name: Shell scripts parse
         run: |
-          for f in bin/dynamic-island-focus bin/dynamic-island-send bin/dynamic-island-bar-setup bin/dynamic-island-claude-setup; do
+          for f in bin/dynamic-island-focus bin/dynamic-island-send bin/dynamic-island-bar-setup bin/dynamic-island-claude-setup bin/dynamic-island-glass; do
             if head -1 "$f" | grep -q bash; then bash -n "$f"; else sh -n "$f"; fi
           done
