@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.2
+
+- Normal theme no longer borrows Liquid Glass motion: the tab selection is a plain pill that
+  slides as a whole (both edges on one spring, no stretching) and cannot be grabbed. The drop
+  stretch and the draggable lens are Liquid Glass only.
+
 ## 1.15.1
 
 - Closed island: fixed the uneven sliding on hover. The lean toward the pointer measured the

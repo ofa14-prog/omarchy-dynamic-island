@@ -60,10 +60,14 @@ Page {
   property bool dragging: false
 
   // Aim both edges, the one in the direction of travel leading.
+  // Liquid Glass only: the edge on the way leads, the other trails, so the
+  // lens stretches like a drop. Normal theme: both edges on one spring, a
+  // plain pill sliding as a whole.
   function aim(left, right) {
     var forward = (left + right) / 2 >= (leftEdge + rightEdge) / 2
-    kLeft = forward ? 140 : 560
-    kRight = forward ? 560 : 140
+    var liquid = island.glassOn
+    kLeft = !liquid ? 320 : forward ? 140 : 560
+    kRight = !liquid ? 320 : forward ? 560 : 140
     goalLeft = left
     goalRight = right
     if (Theme.reduceMotion) { leftEdge = left; rightEdge = right; velLeft = velRight = 0; return }
@@ -76,7 +80,8 @@ Page {
     onTriggered: {
       var dt = 0.016, steps = 2, h = dt / steps
       for (var i = 0; i < steps; i++) {
-        var cl = 2 * 0.6 * Math.sqrt(strip.kLeft), cr = 2 * 0.6 * Math.sqrt(strip.kRight)
+        var zeta = island.glassOn ? 0.6 : 0.8
+        var cl = 2 * zeta * Math.sqrt(strip.kLeft), cr = 2 * zeta * Math.sqrt(strip.kRight)
         strip.velLeft += (strip.kLeft * (strip.goalLeft - strip.leftEdge) - cl * strip.velLeft) * h
         strip.velRight += (strip.kRight * (strip.goalRight - strip.rightEdge) - cr * strip.velRight) * h
         strip.leftEdge += strip.velLeft * h
@@ -122,7 +127,9 @@ Page {
     x: strip.leftEdge
     width: Math.max(16, strip.rightEdge - strip.leftEdge)
     height: strip.height
-    enabled: strip.currentIndex !== -1
+    // Grabbing the lens is a Liquid Glass feature.
+    enabled: strip.currentIndex !== -1 && island.glassOn
+    visible: enabled
     cursorShape: strip.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
     preventStealing: true
     property real grabOffset: 0
