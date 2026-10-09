@@ -40,6 +40,8 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   yalnızca adanın katmanı için çalışma anında kurulur; `"glass": false` hepsini kapatır,
   `"glassOpacity"` camın koyuluğunu ayarlar. Sekme çubuğundaki seçim küçük bir cam mercektir;
   seçtiğiniz sekmeye damla gibi uzanır ve sonra toparlanır (iki kenarı ayrı yaylarla hareket eder).
+  Merceği tutup çubuk boyunca sürükleyebilirsiniz; bırakınca en yakın sekmeye oturur. Kapalı adanın
+  üzerinde cam imlece doğru yumuşakça şişer, imleç ayrılınca geri akar; hiç kopmaz.
 - **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Normal** (düz siyah) ya da **Liquid Glass**
   seçilir (`glass` olarak kaydedilir).
 - **Ana sayfa**: saat, tarih ve pil; kurulu her ajan için bir kullanım kartı (logosu ve Claude

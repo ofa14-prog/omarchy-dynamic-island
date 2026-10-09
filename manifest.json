@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.ofa14-prog.dynamic-island",
   "name": "Dynamic Island",
-  "version": "1.15.0",
+  "version": "1.15.1",
   "author": "Ömer Faruk Altıntaş",
   "license": "MIT",
   "description": "An Apple-style Dynamic Island in the middle of the Omarchy bar: spring animations, now playing, timers, screen recording, a file shelf, launch shortcuts, and live coding-agent sessions (Claude Code, Codex, Antigravity CLI, OpenCode) with permission approve/deny right from the island.",

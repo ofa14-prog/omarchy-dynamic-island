@@ -841,6 +841,15 @@ Item {
     NumberAnimation { target: island; property: "jelly"; to: jellyAnim.amount; duration: 110; easing.type: Easing.OutQuad }
     SpringAnimation { target: island; property: "jelly"; to: 0; spring: 2.6; damping: 0.16; epsilon: 0.0005 }
   }
+  // The pointer's pull on the glass. Its position trails the pointer on a
+  // soft spring (liquid lag) and its strength fades in and out, so leaving
+  // lets the glass flow back.
+  property real pullX: 0
+  property real pullY: 0
+  property real pullAmp: 0
+  Behavior on pullX { enabled: !Theme.reduceMotion; SpringAnimation { spring: 4.5; damping: 0.42; epsilon: 0.05 } }
+  Behavior on pullY { enabled: !Theme.reduceMotion; SpringAnimation { spring: 4.5; damping: 0.42; epsilon: 0.05 } }
+  Behavior on pullAmp { enabled: !Theme.reduceMotion; SpringAnimation { spring: 3; damping: 0.3; epsilon: 0.02 } }
   property real glassEnergy: 0
   function flash() {
     if (!glassOn || Theme.reduceMotion) return
@@ -1129,12 +1138,35 @@ Item {
           value: hover.hovered ? (hover.point.position.y - stage.height / 2) / Math.max(1, stage.height / 2) * 0.7 - 0.6 : -0.83
         }
 
+        // The glass reaches for the pointer (compact, glass on).
+        Binding {
+          target: island
+          property: "pullAmp"
+          value: island.glassOn && island.mode === "compact" && hover.hovered && !Theme.reduceMotion ? 5 : 0
+        }
+        Binding {
+          target: island
+          property: "pullX"
+          when: hover.hovered
+          value: hover.point.position.x / Math.max(0.01, stage.scale)
+        }
+        Binding {
+          target: island
+          property: "pullY"
+          when: hover.hovered
+          value: hover.point.position.y / Math.max(0.01, stage.scale)
+        }
+
         // The pointer gently pulls the compact island toward itself.
         Binding {
           target: stage
           property: "leanX"
-          value: island.mode === "compact" && hover.hovered && !island.halvesOn
-            ? Math.max(-1, Math.min(1, (hover.point.position.x - stage.width / 2) / (stage.width / 2))) * 3.5
+          // Measured against where the island rests (position + leanX), not
+          // where it has leaned to, or each lean moves the pointer's
+          // relative position and leans it again: that was the jitter.
+          // Under glass the glass itself reaches for the pointer instead.
+          value: island.mode === "compact" && hover.hovered && !island.halvesOn && !island.glassOn
+            ? Math.max(-1, Math.min(1, (hover.point.position.x + stage.leanX - stage.width / 2) / (stage.width / 2))) * 3.5
             : 0
         }
 
@@ -1246,6 +1278,7 @@ Item {
           ambL: ambient.leftColor
           ambR: ambient.rightColor
           ambMix: ambient.opacity * (0.55 + ambient.level * 0.45)
+          pull: Qt.vector4d(island.pullX + padX, island.pullY + 12, island.pullAmp, 22)
         }
 
         // Drawn directly (no offscreen texture) so text and icons inside stay

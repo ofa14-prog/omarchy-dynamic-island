@@ -38,43 +38,118 @@ Page {
   }
 
   // ---- selection
-  // Its two edges move on their own springs: the edge on the way leads, the
-  // other follows, so the selection stretches toward the new tab like a
-  // drop and pulls itself together (iOS tab bar). With glass on it is a
-  // small glass lens (components/LiquidGlass.qml, drawn only in this strip
-  // and only while the island is open); otherwise the plain pill.
+  // Its two edges move on their own springs, integrated here (the loop
+  // runs only while they move): the edge on the way leads with a stiff
+  // spring, the other follows with a soft one, so the selection stretches
+  // toward its target like a drop and pulls itself together (iOS tab bar).
+  // It can be grabbed and dragged along the bar; letting go lands it on the
+  // nearest tab. With glass on it is a small glass lens
+  // (components/LiquidGlass.qml, drawn only while the island is open);
+  // otherwise the plain pill.
   readonly property real targetLeft: Math.max(0, currentIndex) * segment + 2
   readonly property real targetRight: targetLeft + segment - 4
   property real leftEdge: targetLeft
   property real rightEdge: targetRight
+  property real goalLeft: targetLeft
+  property real goalRight: targetRight
+  property real velLeft: 0
+  property real velRight: 0
+  property real kLeft: 300
+  property real kRight: 300
   property int lastIndex: currentIndex
+  property bool dragging: false
+
+  // Aim both edges, the one in the direction of travel leading.
+  function aim(left, right) {
+    var forward = (left + right) / 2 >= (leftEdge + rightEdge) / 2
+    kLeft = forward ? 140 : 560
+    kRight = forward ? 560 : 140
+    goalLeft = left
+    goalRight = right
+    if (Theme.reduceMotion) { leftEdge = left; rightEdge = right; velLeft = velRight = 0; return }
+    physics.running = true
+  }
+  Timer {
+    id: physics
+    interval: 16
+    repeat: true
+    onTriggered: {
+      var dt = 0.016, steps = 2, h = dt / steps
+      for (var i = 0; i < steps; i++) {
+        var cl = 2 * 0.6 * Math.sqrt(strip.kLeft), cr = 2 * 0.6 * Math.sqrt(strip.kRight)
+        strip.velLeft += (strip.kLeft * (strip.goalLeft - strip.leftEdge) - cl * strip.velLeft) * h
+        strip.velRight += (strip.kRight * (strip.goalRight - strip.rightEdge) - cr * strip.velRight) * h
+        strip.leftEdge += strip.velLeft * h
+        strip.rightEdge += strip.velRight * h
+      }
+      // Never thinner than a dot, never inside out.
+      if (strip.rightEdge - strip.leftEdge < 16) {
+        var mid = (strip.leftEdge + strip.rightEdge) / 2
+        strip.leftEdge = mid - 8; strip.rightEdge = mid + 8
+      }
+      var still = Math.abs(strip.goalLeft - strip.leftEdge) < 0.05 && Math.abs(strip.goalRight - strip.rightEdge) < 0.05
+        && Math.abs(strip.velLeft) < 0.5 && Math.abs(strip.velRight) < 0.5
+      if (still && !strip.dragging) {
+        strip.leftEdge = strip.goalLeft; strip.rightEdge = strip.goalRight
+        strip.velLeft = 0; strip.velRight = 0
+        running = false
+      }
+    }
+  }
   onCurrentIndexChanged: {
     // Computed here: the targetLeft/Right bindings may not have caught up.
     var tl = Math.max(0, currentIndex) * segment + 2, tr = tl + segment - 4
-    if (Theme.reduceMotion || lastIndex < 0 || currentIndex < 0) {
-      leftSpring.stop(); rightSpring.stop()
-      leftEdge = tl; rightEdge = tr; lastIndex = currentIndex; return
+    if (lastIndex < 0 || currentIndex < 0) {
+      physics.running = false
+      leftEdge = goalLeft = tl; rightEdge = goalRight = tr; lastIndex = currentIndex; return
     }
-    var right = currentIndex > lastIndex
-    leftSpring.spring = right ? 2.6 : 6.5
-    rightSpring.spring = right ? 6.5 : 2.6
-    leftSpring.to = tl
-    rightSpring.to = tr
-    leftSpring.restart()
-    rightSpring.restart()
+    aim(tl, tr)
     lastIndex = currentIndex
     if (island.glassOn) lensFlash.restart()
   }
-  // Size changes (pages added, width) just follow, without the drop.
-  // Only for size changes; a tab change is animated above.
+  // Size changes (pages added, width): follow without the drop.
   function settle() {
-    if (leftSpring.running || rightSpring.running || currentIndex !== lastIndex) return
-    leftEdge = targetLeft; rightEdge = targetRight
+    if (physics.running || dragging || currentIndex !== lastIndex) return
+    leftEdge = goalLeft = targetLeft; rightEdge = goalRight = targetRight
   }
   onTargetLeftChanged: settle()
   onTargetRightChanged: settle()
-  SpringAnimation { id: leftSpring; target: strip; property: "leftEdge"; damping: 0.62; epsilon: 0.1 }
-  SpringAnimation { id: rightSpring; target: strip; property: "rightEdge"; damping: 0.62; epsilon: 0.1 }
+
+  // ---- grab and drag the selection
+  MouseArea {
+    id: grab
+    z: 5
+    x: strip.leftEdge
+    width: Math.max(16, strip.rightEdge - strip.leftEdge)
+    height: strip.height
+    enabled: strip.currentIndex !== -1
+    cursorShape: strip.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+    preventStealing: true
+    property real grabOffset: 0
+    property real pressX: 0
+    onPressed: mouse => {
+      var sx = mapToItem(strip, mouse.x, 0).x
+      pressX = sx
+      grabOffset = sx - (strip.leftEdge + strip.rightEdge) / 2
+    }
+    onPositionChanged: mouse => {
+      var sx = mapToItem(strip, mouse.x, 0).x
+      if (!strip.dragging && Math.abs(sx - pressX) < 4) return
+      if (!strip.dragging) { strip.dragging = true; if (island.glassOn) lensFlash.restart() }
+      var half = (strip.segment - 4) / 2
+      var c = Math.max(half + 2, Math.min(strip.segment * island.pages.length - half - 2, sx - grabOffset))
+      strip.aim(c - half, c + half)
+    }
+    onReleased: mouse => {
+      if (!strip.dragging) return
+      strip.dragging = false
+      var c = (strip.goalLeft + strip.goalRight) / 2
+      var idx = Math.max(0, Math.min(island.pages.length - 1, Math.floor(c / strip.segment)))
+      if (island.pages[idx] !== island.page) island.setPage(island.pages[idx])
+      else strip.aim(strip.targetLeft, strip.targetRight)
+    }
+    onCanceled: { strip.dragging = false; strip.aim(strip.targetLeft, strip.targetRight) }
+  }
 
   property real lensEnergy: 0
   SequentialAnimation {

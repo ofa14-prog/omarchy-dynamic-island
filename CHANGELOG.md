@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.15.1
+
+- Closed island: fixed the uneven sliding on hover. The lean toward the pointer measured the
+  pointer against the island's already-leaned position, so every lean leaned it again.
+  Under glass it no longer leans at all: the glass swells softly toward the pointer instead (a
+  smooth bump in the shader's distance field, so it stretches but never tears) and flows back
+  when the pointer leaves.
+- Tab bar: grab the selection lens and drag it; it follows the pointer, stretching like liquid,
+  and lands on the nearest tab when released. Clicking a tab works as before. The selection's
+  two edges now run on a small spring integrator (only while moving).
+
 ## 1.15.0
 
 - Theme picker on Home (next to the flag): Normal or Liquid Glass.

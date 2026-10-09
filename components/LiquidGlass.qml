@@ -22,6 +22,7 @@ ShaderEffect {
   property color ambL: "black"
   property color ambR: "black"
   property real ambMix: 0
+  property vector4d pull: Qt.vector4d(0, 0, 0, 24)
   readonly property size size: Qt.size(width, height)
 
   fragmentShader: Qt.resolvedUrl("../shaders/liquid.frag.qsb")

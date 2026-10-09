@@ -30,6 +30,8 @@ layout(std140, binding = 0) uniform buf {
     vec4 ambL;      // the music's ambient colours, left and right
     vec4 ambR;
     float ambMix;   // 0: none, 1: full (follows the sound)
+    vec4 pull;      // pointer: x, y, reach (px), sigma (px). The glass swells
+                    // toward it like a drop drawn by a finger, never tearing
 };
 
 float sdRoundBox(vec2 p, vec2 b, vec4 r) {
@@ -56,6 +58,13 @@ float scene(vec2 p) {
     d = smin(d, boxAt(p, rectB, radB), blend);
     if (bub0.z > 0.5) d = smin(d, length(p - bub0.xy) - bub0.z, blend);
     if (bub1.z > 0.5) d = smin(d, length(p - bub1.xy) - bub1.z, blend);
+    // A smooth bump in the field: the body swells toward the pointer and
+    // flows back when it leaves. Added to the distance, so it can only
+    // stretch the glass, never split it.
+    if (pull.z > 0.01) {
+        vec2 q = p - pull.xy;
+        d -= pull.z * exp(-dot(q, q) / (pull.w * pull.w));
+    }
     return d;
 }
 
