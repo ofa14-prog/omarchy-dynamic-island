@@ -2,13 +2,17 @@ import QtQuick
 import "../components"
 
 // Every coding-agent session: what it is doing right now, and a jump to it.
-// Branded after Omarchy's default agent; each session row keeps its own agent.
+// Branded after the island's agent (Omarchy's default, or the one picked in
+// the agent bar); each session row keeps its own agent.
 Page {
   id: page
 
   property var island
   readonly property var agents: island.agents
-  readonly property var sessions: agents.sessionList.slice(0, 4)
+  // With several agents installed the page is per agent (the bar switches);
+  // otherwise it lists every session.
+  readonly property bool perAgent: island.barAgents.length > 1 && island.barAgents.indexOf(island.agentId) !== -1
+  readonly property var sessions: agents.sessionList.filter(s => !perAgent || s.agent === island.agentId).slice(0, 4)
 
   implicitHeight: col.implicitHeight + 8
 
@@ -18,14 +22,17 @@ Page {
   readonly property bool connectable: profile.integration !== "none"
   readonly property bool connected: agents.hooksInstalled
 
-  // ---- live preview (Claude Code and Codex)
+  onShownChanged: if (!shown) agentBar.open = false
+
+  // ---- live preview (Claude Code, Codex and Antigravity)
   // Follows the focused session; with several, click a row to watch it.
   property string pickedId: ""
   readonly property var previewSession: {
     void agents.revision
     var picked = agents.sessions[pickedId]
-    if (agents.canPreview(picked)) return picked
-    if (agents.canPreview(agents.focusSession)) return agents.focusSession
+    var mine = x => !!x && sessions.some(y => y.id === x.id)
+    if (agents.canPreview(picked) && mine(picked)) return picked
+    if (agents.canPreview(agents.focusSession) && mine(agents.focusSession)) return agents.focusSession
     return sessions.find(x => agents.canPreview(x)) || null
   }
   Binding {
@@ -115,12 +122,155 @@ Page {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 10
         Icon {
+          visible: !agentBar.visible
           anchors.verticalCenter: parent.verticalCenter
           source: island.agentLogo
           name: island.agentLogo ? "" : "sparkles"
           color: island.agentColor
           size: 22
         }
+
+        // ---- agent bar: the current agent's mark and a chevron; click to
+        // open it sideways onto every installed agent, click one to switch.
+        Rectangle {
+          id: agentBar
+          visible: island.barAgents.length > 1
+          anchors.verticalCenter: parent.verticalCenter
+          property bool open: false
+          readonly property int chip: 30
+          // Current agent first, the rest after it.
+          readonly property var order: [island.agentId].concat(island.barAgents.filter(a => a !== island.agentId))
+          readonly property int closedW: chip + 18
+          readonly property int openW: order.length * (chip + 2) + 2
+          // Another agent has a session running, or one that needs you.
+          readonly property bool othersBusy: agents.sessionList.some(x => x.agent !== island.agentId && agents.isBusy(x))
+          readonly property bool othersNeed: agents.sessionList.some(x => x.agent !== island.agentId && agents.needsYou(x))
+            || agents.pending.some(r => r.agent !== island.agentId)
+          width: open ? openW : closedW
+          height: chip + 4
+          radius: height / 2
+          color: open ? Theme.fill : barMouse.containsMouse ? Theme.fillHover : "transparent"
+          clip: true
+          Behavior on width {
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: Theme.ms(240); easing.type: Easing.OutCubic }
+          }
+          Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
+
+          Accessible.role: Accessible.ComboBox
+          Accessible.name: I18n.t("Ajan") + ": " + island.agentProduct
+          Accessible.description: I18n.t("Tıkla: ajanları göster")
+          Accessible.onPressAction: open = !open
+
+          // The closed bar's whole area toggles it.
+          MouseArea {
+            id: barMouse
+            anchors.fill: parent
+            enabled: !agentBar.open
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: agentBar.open = true
+          }
+
+          Row {
+            x: 2
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            Repeater {
+              model: agentBar.order
+              delegate: Item {
+                id: chipItem
+                required property string modelData
+                required property int index
+                readonly property bool current: modelData === island.agentId
+                readonly property var mine: agents.sessionList.filter(x => x.agent === modelData)
+                readonly property bool busy: mine.some(x => agents.isBusy(x))
+                readonly property bool needs: mine.some(x => agents.needsYou(x)) || agents.pending.some(r => r.agent === modelData)
+                width: agentBar.chip
+                height: agentBar.chip
+                opacity: agentBar.open || current ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: Theme.ms(160) } }
+
+                Rectangle {
+                  anchors.fill: parent
+                  radius: width / 2
+                  color: chipItem.current && agentBar.open ? Theme.fillHover
+                    : chipMouse.containsMouse ? Theme.fill : "transparent"
+                }
+                Icon {
+                  anchors.centerIn: parent
+                  source: island.logoFor(chipItem.modelData)
+                  name: source ? "" : "sparkles"
+                  color: island.profile(chipItem.modelData).color
+                  size: 19
+                }
+                // A session of this agent is running (dot) or needs you (pulsing).
+                Rectangle {
+                  visible: (chipItem.busy || chipItem.needs) && !chipItem.current
+                  anchors.right: parent.right
+                  anchors.top: parent.top
+                  anchors.margins: 2
+                  width: 8; height: 8; radius: 4
+                  color: chipItem.needs ? Theme.orange : island.profile(chipItem.modelData).color
+                  border.width: 1.5
+                  border.color: Theme.bg
+                  SequentialAnimation on opacity {
+                    running: chipItem.needs && !Theme.reduceMotion && page.shown
+                    loops: Animation.Infinite
+                    onRunningChanged: if (!running) parent.opacity = 1
+                    NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
+                  }
+                }
+                MouseArea {
+                  id: chipMouse
+                  anchors.fill: parent
+                  enabled: agentBar.open
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    // Close first: switching reorders the chips and this
+                    // delegate may be gone right after.
+                    var pick = chipItem.modelData
+                    agentBar.open = false
+                    if (pick !== island.agentId) { page.pickedId = ""; island.setAgent(pick) }
+                  }
+                }
+                Accessible.role: Accessible.RadioButton
+                Accessible.name: island.profile(modelData).product
+                Accessible.checked: current
+              }
+            }
+          }
+          // Chevron while closed; a dot on it when another agent is busy
+          // (its color) or needs you (orange, pulsing).
+          Icon {
+            id: chevron
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            name: "chevron-up"
+            size: 13
+            rotation: 90
+            color: Theme.tertiary
+            visible: !agentBar.open
+          }
+          Rectangle {
+            visible: !agentBar.open && (agentBar.othersBusy || agentBar.othersNeed)
+            x: chevron.x + 7
+            y: chevron.y - 4
+            width: 7; height: 7; radius: 3.5
+            color: agentBar.othersNeed ? Theme.orange : Theme.secondary
+            SequentialAnimation on opacity {
+              running: agentBar.othersNeed && !Theme.reduceMotion && page.shown
+              loops: Animation.Infinite
+              onRunningChanged: if (!running) parent.opacity = 1
+              NumberAnimation { to: 0.3; duration: 600; easing.type: Easing.InOutSine }
+              NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
+            }
+          }
+        }
+
         Label {
           anchors.verticalCenter: parent.verticalCenter
           text: island.agentProduct
@@ -129,7 +279,8 @@ Page {
         }
         Label {
           anchors.verticalCenter: parent.verticalCenter
-          text: agents.sessionList.length > 0 ? I18n.count(agents.sessionList.length, "session") : ""
+          visible: !agentBar.open
+          text: page.sessions.length > 0 ? I18n.count(page.sessions.length, "session") : ""
           font.pixelSize: 13
           color: Theme.tertiary
         }

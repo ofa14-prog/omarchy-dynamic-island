@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Coding agent -> Dynamic Island bridge.
 
-    dynamic-island-hook [--agent claude|codex|gemini]
+    dynamic-island-hook [--agent claude|codex]
+    dynamic-island-hook --agent antigravity <Event>
 
 Registered as a lifecycle hook by bin/dynamic-island-agent-setup. Claude Code
-and Codex share one hook protocol; Gemini CLI's events are mapped onto it.
+and Codex share one hook protocol; Antigravity CLI's events (its payload has
+no event name, so the event is the last argument) are mapped onto it.
 Ordinary events are one JSON line on the island's unix socket. A
 PermissionRequest (Claude Code, Codex) blocks on the socket until the island
 answers; the agent races this hook against its own terminal prompt, so
@@ -23,16 +25,27 @@ import time
 RUNTIME = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
 SOCK = os.path.join(RUNTIME, "dynamic-island", "agents.sock")
 
-# Gemini CLI event names -> the shared vocabulary.
-GEMINI_EVENTS = {
-    "SessionStart": "SessionStart",
-    "SessionEnd": "SessionEnd",
-    "BeforeAgent": "UserPromptSubmit",
-    "AfterAgent": "Stop",
-    "BeforeTool": "PreToolUse",
-    "AfterTool": "PostToolUse",
-    "PreCompress": "PreCompact",
-    "Notification": "Notification",
+# Antigravity CLI tools: a readable name, and whether agy may stop to ask for
+# permission before running it (the island then watches for its prompt).
+AGY_TOOLS = {
+    "run_command": ("Command", True),
+    "send_command_input": ("Command input", True),
+    "write_to_file": ("Write", True),
+    "create_file": ("Write", True),
+    "replace_file_content": ("Edit", True),
+    "multi_replace_file_content": ("Edit", True),
+    "edit_file": ("Edit", True),
+    "delete_file": ("Delete", True),
+    "view_file": ("Read", False),
+    "view_code_item": ("Read", False),
+    "list_dir": ("List", False),
+    "grep_search": ("Search", False),
+    "find_by_name": ("Find", False),
+    "codebase_search": ("Search", False),
+    "search_web": ("Web search", False),
+    "read_url_content": ("Fetch", False),
+    "command_status": ("Command status", False),
+    "generate_image": ("Image", False),
 }
 
 # Codex calls its interrupt event "Interrupt"; Claude Code reports interrupts
@@ -137,10 +150,84 @@ def ancestor_pids(limit=16):
     return pids, agent_pid
 
 
+def agy_describe(name, args, cwd):
+    """(title, detail) for an Antigravity tool call."""
+    a = args if isinstance(args, dict) else {}
+    path = a.get("TargetFile") or a.get("AbsolutePath") or a.get("FilePath") or a.get("Path") or ""
+    summary = a.get("toolSummary") or a.get("toolAction") or ""
+    if name in ("run_command", "send_command_input"):
+        return short(summary or "Command", 80), short(a.get("CommandLine") or a.get("Input"), 600)
+    if name in ("write_to_file", "create_file"):
+        content = str(a.get("CodeContent") or a.get("Content") or "")
+        return rel(path, cwd) or short(summary, 120), short("\n".join(content.splitlines()[:8]), 600)
+    if name in ("replace_file_content", "multi_replace_file_content", "edit_file"):
+        old = a.get("TargetContent") or ""
+        new = a.get("ReplacementContent") or ""
+        chunks = a.get("ReplacementChunks")
+        if isinstance(chunks, list) and chunks and isinstance(chunks[0], dict):
+            old, new = chunks[0].get("TargetContent", ""), chunks[0].get("ReplacementContent", "")
+        return rel(path, cwd) or short(summary, 120), short(diff_preview(old, new), 700)
+    if name == "delete_file":
+        return rel(path, cwd), ""
+    detail = ""
+    for key in ("Query", "Url", "SearchPath", "Pattern", "DirectoryPath"):
+        if a.get(key):
+            detail = short(a.get(key), 200)
+            break
+    return short(summary or rel(path, cwd) or name, 160), detail
+
+
+def build_agy_message(event, data):
+    """Antigravity CLI hook payload -> the shared message, or None to stay
+    silent (PostInvocation, and every model call after the first in a turn)."""
+    paths = data.get("workspacePaths") if isinstance(data.get("workspacePaths"), list) else []
+    call = data.get("toolCall") if isinstance(data.get("toolCall"), dict) else {}
+    cwd = str(paths[0]) if paths else str((call.get("args") or {}).get("Cwd") or os.getcwd())
+    pids, agent_pid = ancestor_pids()
+    msg = {
+        "agent": "antigravity",
+        "session": str(data.get("conversationId") or ""),
+        "cwd": cwd,
+        "project": os.path.basename(cwd.rstrip("/")) or cwd,
+        "pids": pids,
+        "agentPid": agent_pid,
+        "ts": time.time_ns() // 1000,
+        "entry": "",
+    }
+    if data.get("transcriptPath"):
+        msg["transcript"] = str(data.get("transcriptPath"))
+    if event == "PreInvocation":
+        # One turn calls the model several times; the first call starts it.
+        if data.get("invocationNum") not in (0, "0"):
+            return None
+        msg["event"] = "UserPromptSubmit"
+    elif event in ("PreToolUse", "PostToolUse"):
+        name = str(call.get("name") or "tool")
+        label, gated = AGY_TOOLS.get(name, (name.replace("_", " ").capitalize(), False))
+        title, detail = agy_describe(name, call.get("args"), cwd)
+        msg.update({"tool": label, "nativeTool": name, "title": title, "detail": detail,
+                    "step": data.get("stepIdx"), "gated": gated})
+        msg["event"] = event
+        if event == "PostToolUse" and data.get("error"):
+            msg["event"] = "PostToolUseFailure"
+            msg["error"] = short(data.get("error"), 200)
+            msg["interrupt"] = "cancel" in str(data.get("error")).lower()
+    elif event == "Stop":
+        reason = str(data.get("terminationReason") or "")
+        if data.get("error"):
+            msg["event"] = "StopFailure"
+            msg["error"] = short(data.get("error"), 200)
+        elif "CANCEL" in reason or "INTERRUPT" in reason:
+            msg["event"] = "Interrupt"
+        else:
+            msg["event"] = "Stop"
+    else:
+        return None
+    return msg
+
+
 def build_message(agent, data):
     event = data.get("hook_event_name", "")
-    if agent == "gemini":
-        event = GEMINI_EVENTS.get(event, event)
     cwd = data.get("cwd") or os.getcwd()
     pids, agent_pid = ancestor_pids()
     msg = {
@@ -166,13 +253,6 @@ def build_message(agent, data):
     if event == "Notification":
         msg["message"] = short(data.get("message"), 240)
         msg["kind"] = data.get("notification_type", "")
-        # Gemini CLI announces its tool confirmations here but cannot take an
-        # answer from a hook: show it as a permission notice.
-        if agent == "gemini" and msg["kind"] == "ToolPermission":
-            msg["event"] = "PermissionNotice"
-            details = data.get("details") if isinstance(data.get("details"), dict) else {}
-            msg["tool"] = details.get("tool_name") or details.get("toolName") or details.get("type") or ""
-            msg["title"] = short(details.get("title") or details.get("command") or data.get("message"), 160)
     if event == "SessionStart":
         msg["source"] = data.get("source", "")
     if event in ("PreCompact", "PostCompact"):
@@ -197,6 +277,37 @@ def build_message(agent, data):
     return msg
 
 
+def send_line(msg):
+    """One event line to the island; waits for its "ok" so the line is read."""
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        sock.settimeout(0.5)
+        sock.connect(SOCK)
+        sock.sendall((json.dumps(msg, ensure_ascii=False) + "\n").encode())
+        sock.settimeout(1.0)
+        sock.recv(16)
+    finally:
+        sock.close()
+
+
+def antigravity_main():
+    """Antigravity CLI. A failing or slow PreToolUse hook *blocks* the tool
+    call there, and any printed decision overrides agy's own prompt (even "{}"
+    denies), so this path never fails, never waits on the user and prints
+    nothing: it only reports. Permission answers reach agy's own prompt as a
+    key press (bin/dynamic-island-send --key)."""
+    try:
+        event = sys.argv[-1] if len(sys.argv) > 3 else ""
+        data = json.load(sys.stdin)
+        if isinstance(data, dict) and os.path.exists(SOCK):
+            msg = build_agy_message(event, data)
+            if msg:
+                send_line(msg)
+    except Exception:  # noqa: BLE001 - must never block the agent
+        pass
+    return 0
+
+
 def main():
     agent = "claude"
     if "--agent" in sys.argv:
@@ -204,16 +315,21 @@ def main():
         if i + 1 < len(sys.argv):
             agent = sys.argv[i + 1]
 
+    # Gemini CLI is no longer supported; hooks left from an older install
+    # answer "no opinion" and report nothing (`--remove gemini` cleans up).
+    if agent == "gemini":
+        print("{}")
+        return 0
+
+    if agent == "antigravity":
+        return antigravity_main()
+
     try:
         data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
         return 0
-    # Gemini CLI reads stdout as JSON; an empty object means "no opinion".
-    quiet = "{}" if agent == "gemini" else ""
 
     def done():
-        if quiet:
-            print(quiet)
         return 0
 
     if not os.path.exists(SOCK):

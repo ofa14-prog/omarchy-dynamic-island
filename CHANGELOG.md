@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.11.0
+
+- **Antigravity CLI** (`agy`) replaces Gemini CLI: live sessions and states, the live feed from
+  its transcript, the message box, and permission Allow · Always (this conversation) · Deny from
+  the island. agy reports its prompt only in its own log, and ignores a hook's "allow", so the
+  island watches that log (matched to the hook's step) and answers with the prompt's key in
+  agy's terminal (tmux, or its own window matched by process). Answers given in the terminal,
+  and Esc there, close the island's card. Hooks go to `~/.gemini/config/hooks.json`; the hook
+  never blocks or prints a decision for agy (a failing hook would block the tool call).
+- Gemini CLI hooks removed (`dynamic-island-agent-setup --remove gemini` cleans up older
+  installs; `--remove all` includes it). Gemini stays as a branding-only profile for Omarchy's
+  default agent.
+- **Agent bar**: with several supported agents installed, the agent page's mark opens sideways
+  onto all of them; picking one switches the page, tab, colors, Connect and "New session" (a
+  non-default agent opens in Omarchy's agent terminal). Dots show other agents' activity.
+
 ## 1.10.2
 
 - New preview image (closed island with bubbles, Home, permission, Music and Timer) and a

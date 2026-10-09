@@ -4,8 +4,8 @@
 
 [Omarchy](https://omarchy.org) bar'ının ortasında Apple tarzı bir Dynamic Island. Gerçeği gibi yay
 fiziğiyle açılan, baloncuklara bölünen ve titreyen tek bir siyah şekil: müzik, sayaç, ekran kaydı,
-dosya rafı, kısayollar ve **kodlama ajanı** oturumlarınız (Claude Code, Codex, OpenCode,
-Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsiniz.
+dosya rafı, kısayollar ve **kodlama ajanı** oturumlarınız (Claude Code, Codex, Antigravity CLI,
+OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsiniz.
 
 ![Dynamic Island](preview.png)
 
@@ -42,7 +42,12 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
   yüklenir); sağ tık yalnızca takılan adayı düzeltir (oturumlar, istekler, uyarılar).
 - **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
   spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
-- **Canlı akış** (Claude Code, Codex): oturumların altında son istekler, yanıtlar, araç çağrıları ve
+- **Ajan çubuğu**: desteklenen birden fazla ajan kuruluysa (Claude Code, Codex, Antigravity CLI,
+  OpenCode) ajan sayfasındaki logo küçük bir çubuğa dönüşür. Tıklayınca kurulu tüm ajanlara açılır;
+  birini seçince sayfa, sekme, renkler ve "Yeni oturum" ona geçer (`agent` olarak kaydedilir).
+  Kapalı çubuktaki ya da bir ajanın ikonundaki nokta, başka bir ajanın çalıştığını ya da sizi
+  beklediğini gösterir.
+- **Canlı akış** (Claude Code, Codex, Antigravity CLI): oturumların altında son istekler, yanıtlar, araç çağrıları ve
   çıktıları, ajanın kendi terminalindeki gibi. Birden çok oturumda izlemek istediğinize tıklayın;
   akış kaydırılabilir (tekerlek ya da sürükleme); en alttayken yeni çıktıyı izler. Köşedeki ok
   akışı büyütür ve çıktıların tamamını kesmeden gösterir.
@@ -77,11 +82,18 @@ Gemini CLI). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirs
 | Claude Code | var | İzin ver · Her zaman · Reddet |
 | Codex | var | İzin ver · Reddet |
 | OpenCode | var | İzin ver · Her zaman · Reddet |
-| Gemini CLI | var | Gösterilir, terminalde yanıtlanır (Gemini hook'ları yanıt veremez) |
+| Antigravity CLI | var | İzin ver · Her zaman (bu konuşmada) · Reddet; agy'nin kendi istem tuşlarıyla |
 | Pi, Oh My Pi, Grok, Crush, Cursor, Copilot, Hermes, OpenClaw, Muse | — | — (olay API'si yok; marka, başlatma ve kullanım) |
 
 Arka plan çalıştırmaları (`claude -p`, SDK betikleri) oturum ya da uyarı olarak görünmez.
-- Türkçe ve İngilizce arayüz; Omarchy sistem fontunu kullanır.
+- İngilizce, İspanyolca, Rusça ve Türkçe arayüz; Omarchy sistem fontunu kullanır.
+
+Antigravity CLI (`agy`) her araç çağrısını hook'lara bildirir ama izin istemini bildirmez; bir
+hook'un "izin ver" yanıtı da o istemi atlatmaz. Bu yüzden ada agy'nin kendi günlüğünü izler
+(`Surfacing tool confirmation … at step N`, hook'un adım numarasıyla eşleşir) ve adadan yanıt
+verdiğinizde agy'nin terminalinde istemin tuşuna basar: `1` çalıştır, `2` bu konuşmada hep izin
+ver, `Esc` iptal. agy tmux'taysa arka planda, değilse işlemle birebir eşleşen kendi penceresinde.
+Terminalde yanıtlarsanız adadaki kart kendiliğinden kapanır.
 
 ### Etkileşim
 
@@ -138,11 +150,11 @@ Ajanlarınızı bağlayın: adanın ajan sayfasındaki **Bağla** düğmesiyle (
 
 ```sh
 ~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-agent-setup claude codex
-# seçenekler: claude codex gemini opencode all · --remove … · --status
+# seçenekler: claude codex antigravity opencode all · --remove … · --status
 ```
 
-Claude Code `~/.claude/settings.json`, Codex `~/.codex/hooks.json`, Gemini CLI `~/.gemini/settings.json`
-dosyasına hook ekler; OpenCode için `~/.config/opencode/plugins/` altına eklenti bağlantısı koyar.
+Claude Code `~/.claude/settings.json`, Codex `~/.codex/hooks.json`, Antigravity CLI
+`~/.gemini/config/hooks.json` dosyasına hook ekler; OpenCode için `~/.config/opencode/plugins/` altına eklenti bağlantısı koyar.
 Her dosya önce yedeklenir, yalnızca adanın kendi girdileri eklenir/kaldırılır. Ada çalışmıyorsa
 hook'lar hiçbir şey yazmaz ve ajan normal davranır.
 
@@ -193,7 +205,7 @@ omarchy plugin remove io.github.ofa14-prog.dynamic-island
 ## Teşekkür
 
 Arayüz ikonları [Reicon](https://github.com/dqev/reicon)'dan (MIT; temel ikonlar Solar Icons,
-CC BY 4.0). Ajan logoları (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) Simple Icons
-üzerinden; sahiplerinin ticari markalarıdır ve bu proje hiçbiriyle bağlantılı değildir. Ayrıntılar: [icons/NOTICE.md](icons/NOTICE.md).
+CC BY 4.0). Ajan logoları (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) Simple Icons,
+Antigravity [LobeHub Icons](https://github.com/lobehub/lobe-icons) (MIT) üzerinden; sahiplerinin ticari markalarıdır ve bu proje hiçbiriyle bağlantılı değildir. Ayrıntılar: [icons/NOTICE.md](icons/NOTICE.md).
 
 MIT Lisansı, bkz. [LICENSE](LICENSE).

@@ -33,8 +33,10 @@ import "components/Agents.js" as Agents
 //                                            (peekOnAgentDone), ✓ in compact for 8 s
 //   agent turn failed (StopFailure)          "<agent> stopped on an error" banner
 //   agent waiting for you (question,         "<agent> is waiting for you" banner,
-//   elicitation, idle prompt) / Gemini       pulsing dot in compact until you act
-//   permission in its terminal
+//   elicitation, idle prompt)                pulsing dot in compact until you act
+//   Antigravity at its permission prompt     same as a permission request: the
+//                                            island opens on it; answers are
+//                                            pressed as keys in agy's terminal
 //   agent turn interrupted / quiet           no banner; compact falls back
 //   timer finished                           opens on the timer, shakes, chimes
 //   new track (settled 1.5 s, playing)       banner (peekOnTrackChange)
@@ -159,6 +161,28 @@ Item {
     onFileChanged: reload()
     onLoaded: island.omarchyAgent = text().trim()
   }
+  // Agents the island connects to that are installed here (in Agents.js
+  // order). With more than one, the agent page shows a bar to switch
+  // between them; the choice is saved as the `agent` setting.
+  property var presentAgents: []
+  Process {
+    id: agentProbe
+    running: true
+    command: ["sh", "-c", "for a; do id=${a%%:*}; bin=${a#*:}; command -v \"$bin\" >/dev/null 2>&1 && echo \"$id\"; done", "sh"]
+      .concat(Agents.connectable.map(id => id + ":" + Agents.get(id).bin))
+    stdout: StdioCollector {
+      onStreamFinished: island.presentAgents = text.split("\n").filter(l => l !== "")
+    }
+  }
+  Timer { interval: 60000; repeat: true; running: true; onTriggered: if (!agentProbe.running) agentProbe.running = true }
+  // Agents for the bar: the installed ones, plus the current one if it is not.
+  readonly property var barAgents: {
+    var list = presentAgents.slice()
+    if (agentId && Agents.connectable.indexOf(agentId) !== -1 && list.indexOf(agentId) === -1) list.unshift(agentId)
+    return list
+  }
+  function setAgent(id) { if (id && id !== agentId) setConfig("agent", id) }
+
   // The agent Omarchy launches by default shapes the agent page: its name,
   // mark, colors and spinner. Sessions of other agents keep their own look.
   readonly property var agent: profile(agentId)
@@ -262,7 +286,7 @@ Item {
     if (action === "stopwatch") { timer.startStopwatch(); openPage("timer"); return }
     if (action === "timer") { timer.startCountdown(Number(item.seconds) || 300); openPage("timer"); return }
     if (action.indexOf("page:") === 0) { openPage(action.substring(5)); return }
-    if (action === "agent") Quickshell.execDetached(["omarchy-agent"])
+    if (action === "agent") agents.newSession()
     else if (action === "editor") apps.openEditor()
     else if (action === "browser") apps.openBrowser()
     else if (action === "files") apps.openFiles()
@@ -285,6 +309,7 @@ Item {
     id: agentsSvc
     pluginDir: island.pluginDir
     defaultAgent: island.agentId
+    omarchyAgent: island.omarchyAgent
     quietAfterMs: Math.max(20, Number(island.cfg("agentQuietSeconds")) || 180) * 1000
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {

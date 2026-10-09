@@ -4,6 +4,7 @@
 .pragma library
 
 var en = {
+  "Tıkla: ajanları göster": "Click: show the agents",
   "Bar'ın ortası dolu": "The bar's center is taken",
   "Öğeler sağa taşınır, geri alınabilir": "Its items move right; undoable",
   "Önerilen: Islands bar": "Recommended: Islands bar",
@@ -173,6 +174,7 @@ var en = {
 }
 
 var es = {
+  "Tıkla: ajanları göster": "Clic: mostrar los agentes",
   "Bar'ın ortası dolu": "El centro de la barra está ocupado",
   "Öğeler sağa taşınır, geri alınabilir": "Sus elementos van a la derecha",
   "Önerilen: Islands bar": "Recomendado: barra Islands",
@@ -342,6 +344,7 @@ var es = {
 }
 
 var ru = {
+  "Tıkla: ajanları göster": "Клик: показать агентов",
   "Bar'ın ortası dolu": "Центр панели занят",
   "Öğeler sağa taşınır, geri alınabilir": "Элементы уйдут вправо, обратимо",
   "Önerilen: Islands bar": "Рекомендуется: панель Islands",

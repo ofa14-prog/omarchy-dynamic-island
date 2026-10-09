@@ -3,7 +3,7 @@
 preview: the last prompts, replies, tool calls and their output, the way the
 agent's own terminal shows them.
 
-  dynamic-island-transcript <claude|codex> <transcript.jsonl> [count] [lines-per-output]
+  dynamic-island-transcript <claude|codex|antigravity> <transcript.jsonl> [count] [lines-per-output]
 
 Prints one JSON array: [{"k": kind, "t": text, "d": detail, "err": bool}]
   kind  prompt | text | tool | result | interrupt
@@ -199,6 +199,74 @@ def codex(entries):
     return flatten(items)
 
 
+# ---------------------------------------------------------------- Antigravity
+
+AGY_LABELS = {
+    "run_command": "Bash", "send_command_input": "Bash", "write_to_file": "Write", "create_file": "Write",
+    "replace_file_content": "Edit", "multi_replace_file_content": "Edit", "edit_file": "Edit",
+    "delete_file": "Delete", "view_file": "Read", "view_code_item": "Read", "list_dir": "List",
+    "grep_search": "Search", "find_by_name": "Find", "search_web": "WebSearch", "read_url_content": "Fetch",
+}
+
+
+def agy_args(name, args):
+    a = args if isinstance(args, dict) else {}
+    for key in ("CommandLine", "Input", "TargetFile", "AbsolutePath", "FilePath", "Query", "Url",
+                "SearchPath", "DirectoryPath", "Pattern", "toolSummary"):
+        v = a.get(key)
+        if isinstance(v, str) and v.strip():
+            return one_line(v, 160 if RESULT_LINES > 0 else 4000)
+    return ""
+
+
+def agy_output(content):
+    """Tool output step: drop the timing header, flag a non-zero exit."""
+    text = str(content or "")
+    lines = text.replace("\r", "").split("\n")
+    while lines and (lines[0].startswith("Created At:") or lines[0].startswith("Completed At:") or not lines[0].strip()):
+        lines.pop(0)
+    err = False
+    m = re.match(r"The command exited with code (\d+)", lines[0]) if lines else None
+    if m:
+        err = m.group(1) != "0"
+        lines.pop(0)
+    body = "\n".join(l for l in lines if l.strip() not in ("Output:", "Stdout:", "Stderr:"))
+    return body, err
+
+
+def antigravity(entries):
+    items, open_tools = [], []
+    for e in entries:
+        t = e.get("type")
+        content = e.get("content")
+        if t == "USER_INPUT":
+            open_tools = []      # calls that never ran (denied, cancelled)
+            text = str(content or "")
+            m = re.search(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", text, re.S)
+            text = m.group(1) if m else text
+            if text.strip():
+                items.append({"k": "prompt", "t": one_line(text)})
+        elif t == "PLANNER_RESPONSE":
+            if isinstance(content, str) and content.strip():
+                items.append({"k": "text", "t": first_lines(content, None if RESULT_LINES <= 0 else max(2, RESULT_LINES), 220)})
+            calls = e.get("tool_calls")
+            for c in calls if isinstance(calls, list) else []:
+                if not isinstance(c, dict):
+                    continue
+                name = str(c.get("name") or "tool")
+                tool = {"k": "tool", "t": AGY_LABELS.get(name, name), "d": agy_args(name, c.get("args"))}
+                items.append(tool)
+                open_tools.append(tool)
+        elif t == "GENERIC" and content:
+            body, err = agy_output(content)
+            result = {"k": "result", "t": first_lines(body) or "(no output)", "err": err}
+            if open_tools:
+                open_tools.pop(0)["res"] = result
+            else:
+                items.append(result)
+    return flatten(items)
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit(__doc__)
@@ -206,7 +274,7 @@ def main():
     count = int(sys.argv[3]) if len(sys.argv) > 3 else 10
     global RESULT_LINES
     RESULT_LINES = max(0, int(sys.argv[4])) if len(sys.argv) > 4 else 2   # 0: all
-    parse = codex if agent == "codex" else claude
+    parse = codex if agent == "codex" else antigravity if agent == "antigravity" else claude
     # Step back from the end until there is enough to show: a pasted image
     # or a long tool output can make a single entry megabytes long.
     items, lines, rest = [], [], b""

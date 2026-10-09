@@ -5,7 +5,7 @@
 An Apple-style Dynamic Island in the middle of the [Omarchy](https://omarchy.org) bar. One black
 shape that springs open, splits into bubbles and shakes like the real thing, with live music,
 timers, screen recording, a file shelf, launch shortcuts, and your **coding agent** sessions
-(Claude Code, Codex, OpenCode, Gemini CLI), including approving or denying tool permissions
+(Claude Code, Codex, Antigravity CLI, OpenCode), including approving or denying tool permissions
 right from the island.
 
 ![Dynamic Island](preview.png)
@@ -43,7 +43,11 @@ right from the island.
 - **Agent**: follows Omarchy's default agent (`omarchy default agent …`): its name, mark, colors and
   spinner. Every session, what it is doing right now, elapsed time; jump to its terminal, open its
   folder in your editor, start a new session.
-- **Live feed** (Claude Code, Codex): under the sessions, the last prompts, replies, tool calls and
+- **Agent bar**: with more than one supported agent installed (Claude Code, Codex, Antigravity CLI,
+  OpenCode), the agent page's mark becomes a small bar. Click it to open it onto every installed
+  agent and pick one: the page, tab, colors and "New session" switch to it (saved as `agent`). A
+  dot on the closed bar, or on an agent's icon, means another agent is busy or waiting for you.
+- **Live feed** (Claude Code, Codex, Antigravity CLI): under the sessions, the last prompts, replies, tool calls and
   their output, drawn the way the agent's terminal draws them. With several sessions, click a row
   to watch that one. It scrolls (wheel or drag) and follows new output while you are at the
   bottom; the corner arrow makes it taller and shows every line of output, nothing cut.
@@ -81,11 +85,18 @@ right from the island.
 | Claude Code | yes | Allow · Always · Deny |
 | Codex | yes | Allow · Deny |
 | OpenCode | yes | Allow · Always · Deny |
-| Gemini CLI | yes | Shown; answered in the terminal (Gemini hooks cannot answer) |
+| Antigravity CLI | yes | Allow · Always (this conversation) · Deny, pressed as agy's own prompt keys |
 | Pi, Oh My Pi, Grok, Crush, Cursor, Copilot, Hermes, OpenClaw, Muse | — | — (no event API; branding, launch and usage only) |
 
 Headless runs (`claude -p`, SDK scripts) never show up as sessions or banners.
-- English and Turkish UI; follows the Omarchy system font.
+- English, Spanish, Russian and Turkish UI; follows the Omarchy system font.
+
+Antigravity CLI (`agy`) tells hooks about every tool call but not about its permission prompt, and a
+hook's "allow" does not skip that prompt. So the island watches agy's own log (`Surfacing tool
+confirmation … at step N`, matched to the hook's step) and, when you answer on the island, presses
+the prompt's key in agy's terminal: `1` run, `2` allow for this conversation, `Esc` cancel. It uses
+tmux in the background when agy runs there, otherwise agy's own window, matched exactly by
+process. Answering in the terminal closes the island's card on its own.
 
 ### Interaction
 
@@ -150,14 +161,14 @@ default agent) or:
 
 ```sh
 ~/.config/omarchy/plugins/io.github.ofa14-prog.dynamic-island/bin/dynamic-island-agent-setup claude codex
-# any of: claude codex gemini opencode all · --remove … · --status
+# any of: claude codex antigravity opencode all · --remove … · --status
 ```
 
 | Agent | What it changes |
 |---|---|
 | Claude Code | hooks in `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR`) |
 | Codex | hooks in `~/.codex/hooks.json` (or `$CODEX_HOME`) |
-| Gemini CLI | hooks in `~/.gemini/settings.json` |
+| Antigravity CLI | hooks in `~/.gemini/config/hooks.json` (shared by the Antigravity CLI, IDE and app) |
 | OpenCode | a plugin symlink in `~/.config/opencode/plugins/` |
 
 Each file is backed up first and only the island's own entries are added or removed. State events
@@ -217,8 +228,9 @@ omarchy-shell dynamicisland status | sessions | events
 
 ## How the agent bridge works
 
-`bin/dynamic-island-hook --agent <id>` is registered for the agent's lifecycle events (Gemini's
-events are mapped onto the same vocabulary) and writes one JSON line per event to
+`bin/dynamic-island-hook --agent <id>` is registered for the agent's lifecycle events (Antigravity's
+events are mapped onto the same vocabulary; its path never blocks and never prints a decision,
+because agy treats any answer, even `{}`, as one) and writes one JSON line per event to
 `$XDG_RUNTIME_DIR/dynamic-island/agents.sock`, in a directory only you can open. A permission
 request keeps the connection open until the island answers, and the hook hands that verdict back
 as the agent's own hook decision. OpenCode uses `agents/opencode/dynamic-island.js`, which listens
@@ -235,7 +247,8 @@ omarchy plugin remove io.github.ofa14-prog.dynamic-island
 ## Credits
 
 Interface icons from [Reicon](https://github.com/dqev/reicon) (MIT; base icons from Solar Icons,
-CC BY 4.0). Agent marks (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) via Simple Icons;
+CC BY 4.0). Agent marks (Claude, OpenAI, Gemini, OpenCode, Copilot, Cursor, X) via Simple Icons, Antigravity via
+[LobeHub Icons](https://github.com/lobehub/lobe-icons) (MIT);
 they are trademarks of their owners, and this project is not affiliated with any of them. See [icons/NOTICE.md](icons/NOTICE.md).
 
 MIT License, see [LICENSE](LICENSE).

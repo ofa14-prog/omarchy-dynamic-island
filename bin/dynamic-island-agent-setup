@@ -5,7 +5,8 @@
   dynamic-island-agent-setup --remove [agent…]   remove only the island's parts
   dynamic-island-agent-setup --status            JSON: which agents are connected
 
-  agents: claude, codex, gemini, opencode, or "all"
+  agents: claude, codex, antigravity, opencode, or "all"
+  (`--remove gemini` still cleans up hooks from older versions)
 
 Every config file is backed up before it is changed, and only entries that
 point at this plugin are ever added or removed.
@@ -23,7 +24,7 @@ OPENCODE_PLUGIN = os.path.join(HERE, "..", "agents", "opencode", "dynamic-island
 HOME = os.path.expanduser("~")
 XDG_CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
 
-AGENTS = ["claude", "codex", "gemini", "opencode"]
+AGENTS = ["claude", "codex", "antigravity", "opencode"]
 
 
 def claude_file():
@@ -36,6 +37,11 @@ def codex_file():
 
 def gemini_file():
     return os.path.join(HOME, ".gemini", "settings.json")
+
+
+def antigravity_file():
+    # User-global hooks, shared by the Antigravity CLI, IDE and app.
+    return os.path.join(HOME, ".gemini", "config", "hooks.json")
 
 
 def opencode_file():
@@ -54,8 +60,10 @@ CLAUDE_EVENTS = {"SessionStart": True, "SessionEnd": True, "UserPromptSubmit": T
 CODEX_EVENTS = {"SessionStart": True, "SessionEnd": True, "UserPromptSubmit": True, "PreToolUse": True,
                 "PostToolUse": True, "Stop": True, "PreCompact": True, "PostCompact": True,
                 "Interrupt": True, "PermissionRequest": False}
-GEMINI_EVENTS = ["SessionStart", "SessionEnd", "BeforeAgent", "AfterAgent", "BeforeTool", "AfterTool",
-                 "PreCompress", "Notification"]
+# Antigravity: tool events take matcher groups, the others a flat list. Its
+# payload has no event name, so the event is passed as an argument.
+ANTIGRAVITY_TOOL_EVENTS = ["PreToolUse", "PostToolUse"]
+ANTIGRAVITY_EVENTS = ["PreInvocation", "Stop"]
 TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionDenied", "PermissionRequest"}
 
 
@@ -79,7 +87,11 @@ def save(path, data):
 
 
 def is_ours(entry):
-    return any("dynamic-island-hook" in str(h.get("command", "")) for h in entry.get("hooks", []))
+    if not isinstance(entry, dict):
+        return False
+    if "dynamic-island-hook" in str(entry.get("command", "")):
+        return True
+    return any("dynamic-island-hook" in str(h.get("command", "")) for h in entry.get("hooks", []) if isinstance(h, dict))
 
 
 def strip(settings):
@@ -132,6 +144,19 @@ def remove_hooks(path):
     save(path, settings)
 
 
+def install_antigravity(path):
+    settings = load(path)
+    strip(settings)
+    hooks = settings.setdefault("hooks", {})
+    for event in ANTIGRAVITY_TOOL_EVENTS:
+        hooks.setdefault(event, []).append({"matcher": ".*", "hooks": [
+            {"type": "command", "command": f"{HOOK} --agent antigravity {event}", "timeout": 10}]})
+    for event in ANTIGRAVITY_EVENTS:
+        hooks.setdefault(event, []).append(
+            {"type": "command", "command": f"{HOOK} --agent antigravity {event}", "timeout": 10})
+    save(path, settings)
+
+
 def install(agent):
     if agent == "claude":
         install_hooks(claude_file(), agent, CLAUDE_EVENTS)
@@ -139,9 +164,9 @@ def install(agent):
     if agent == "codex":
         install_hooks(codex_file(), agent, CODEX_EVENTS, matcher=None)
         return codex_file()
-    if agent == "gemini":
-        install_hooks(gemini_file(), agent, {e: None for e in GEMINI_EVENTS}, matcher=None)
-        return gemini_file()
+    if agent == "antigravity":
+        install_antigravity(antigravity_file())
+        return antigravity_file()
     if agent == "opencode":
         target = opencode_file()
         os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -159,6 +184,8 @@ def remove(agent):
         remove_hooks(codex_file())
     elif agent == "gemini":
         remove_hooks(gemini_file())
+    elif agent == "antigravity":
+        remove_hooks(antigravity_file())
     elif agent == "opencode":
         target = opencode_file()
         if os.path.islink(target) and "dynamic-island" in os.readlink(target):
@@ -174,7 +201,7 @@ def status():
     return {
         "claude": hooked(claude_file()),
         "codex": hooked(codex_file()),
-        "gemini": hooked(gemini_file()),
+        "antigravity": hooked(antigravity_file()),
         "opencode": os.path.lexists(opencode_file()),
     }
 
@@ -185,6 +212,8 @@ def main():
         print(json.dumps(status()))
         return
     agents = AGENTS if "all" in args else (args or ["claude"])
+    if "--remove" in sys.argv and "all" in args:
+        agents = agents + ["gemini"]
     for agent in agents:
         if "--remove" in sys.argv:
             remove(agent)
