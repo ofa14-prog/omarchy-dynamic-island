@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.15.0
+
+- Theme picker on Home (next to the flag): Normal or Liquid Glass.
+- Tab bar: the selection is a liquid glass lens. Its leading edge springs ahead and the trailing
+  edge follows, so it stretches like a drop toward the new tab, flashes, and settles. The
+  shader draws only inside the tab bar and only while the island is open. The plain pill
+  (Normal theme) moves the same way.
+
 ## 1.14.1
 
 - Bubbles no longer look dimmed under Liquid Glass: they sat below the island's glass layer, so

@@ -4,6 +4,8 @@
 .pragma library
 
 var en = {
+  "Tema": "Theme",
+  "Normal": "Normal",
   "Kopyalandı": "Copied",
   "Hepsini kopyala": "Copy all",
   "Raftaki tüm dosyaları panoya kopyala": "Copy every file on the shelf to the clipboard",
@@ -180,6 +182,8 @@ var en = {
 }
 
 var es = {
+  "Tema": "Tema",
+  "Normal": "Normal",
   "Kopyalandı": "Copiado",
   "Hepsini kopyala": "Copiar todo",
   "Raftaki tüm dosyaları panoya kopyala": "Copiar todos los archivos del estante al portapapeles",
@@ -356,6 +360,8 @@ var es = {
 }
 
 var ru = {
+  "Tema": "Тема",
+  "Normal": "Обычная",
   "Kopyalandı": "Скопировано",
   "Hepsini kopyala": "Копировать всё",
   "Raftaki tüm dosyaları panoya kopyala": "Скопировать все файлы с полки в буфер",

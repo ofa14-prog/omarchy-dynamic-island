@@ -38,7 +38,10 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   Sıvı gibi davranırlar: baloncuk adadan damla gibi kopar ve geri akar, ikiye bölünen yarılar
   incelen bir köprüyle ayrılır, cam açılırken, kapanırken ve dokununca esner ve ışıldar. Bulanıklık
   yalnızca adanın katmanı için çalışma anında kurulur; `"glass": false` hepsini kapatır,
-  `"glassOpacity"` camın koyuluğunu ayarlar.
+  `"glassOpacity"` camın koyuluğunu ayarlar. Sekme çubuğundaki seçim küçük bir cam mercektir;
+  seçtiğiniz sekmeye damla gibi uzanır ve sonra toparlanır (iki kenarı ayrı yaylarla hareket eder).
+- **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Normal** (düz siyah) ya da **Liquid Glass**
+  seçilir (`glass` olarak kaydedilir).
 - **Ana sayfa**: saat, tarih ve pil; kurulu her ajan için bir kullanım kartı (logosu ve Claude
   Code'daki gibi iki halka: 5 saat ve haftalık; çalışanlar önce; tıklayınca o ajan açılır) ve *varsayılan* ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi
   uygulama ikonlarıyla ızgara şeklinde kısayollar.

@@ -33,6 +33,7 @@ ICONS = {
     "battery-charge": ("battery-charging", "Outline"),
     "chat": ("chat-round-dots", "Outline"), "arrow-up-right": ("arrow-right-up", "Outline"),
     "arrow-up": ("arrow-up", "Outline"), "send": ("send", "Filled"),
+    "palette": ("palette", "Outline"), "droplet": ("droplet", "Outline"), "square-solid": ("colors-square", "Outline"),
     "bell": ("bell", "Outline"), "globe": ("globe", "Outline"), "sparkles": ("sparkles", "Outline"), "record": ("record-circle", "Filled"),
 }
 

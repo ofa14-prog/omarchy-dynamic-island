@@ -37,19 +37,79 @@ Page {
     color: Qt.rgba(1, 1, 1, 0.06)
   }
 
+  // ---- selection
+  // Its two edges move on their own springs: the edge on the way leads, the
+  // other follows, so the selection stretches toward the new tab like a
+  // drop and pulls itself together (iOS tab bar). With glass on it is a
+  // small glass lens (components/LiquidGlass.qml, drawn only in this strip
+  // and only while the island is open); otherwise the plain pill.
+  readonly property real targetLeft: Math.max(0, currentIndex) * segment + 2
+  readonly property real targetRight: targetLeft + segment - 4
+  property real leftEdge: targetLeft
+  property real rightEdge: targetRight
+  property int lastIndex: currentIndex
+  onCurrentIndexChanged: {
+    // Computed here: the targetLeft/Right bindings may not have caught up.
+    var tl = Math.max(0, currentIndex) * segment + 2, tr = tl + segment - 4
+    if (Theme.reduceMotion || lastIndex < 0 || currentIndex < 0) {
+      leftSpring.stop(); rightSpring.stop()
+      leftEdge = tl; rightEdge = tr; lastIndex = currentIndex; return
+    }
+    var right = currentIndex > lastIndex
+    leftSpring.spring = right ? 2.6 : 6.5
+    rightSpring.spring = right ? 6.5 : 2.6
+    leftSpring.to = tl
+    rightSpring.to = tr
+    leftSpring.restart()
+    rightSpring.restart()
+    lastIndex = currentIndex
+    if (island.glassOn) lensFlash.restart()
+  }
+  // Size changes (pages added, width) just follow, without the drop.
+  // Only for size changes; a tab change is animated above.
+  function settle() {
+    if (leftSpring.running || rightSpring.running || currentIndex !== lastIndex) return
+    leftEdge = targetLeft; rightEdge = targetRight
+  }
+  onTargetLeftChanged: settle()
+  onTargetRightChanged: settle()
+  SpringAnimation { id: leftSpring; target: strip; property: "leftEdge"; damping: 0.62; epsilon: 0.1 }
+  SpringAnimation { id: rightSpring; target: strip; property: "rightEdge"; damping: 0.62; epsilon: 0.1 }
+
+  property real lensEnergy: 0
+  SequentialAnimation {
+    id: lensFlash
+    NumberAnimation { target: strip; property: "lensEnergy"; to: 1; duration: 80 }
+    NumberAnimation { target: strip; property: "lensEnergy"; to: 0; duration: 420; easing.type: Easing.OutCubic }
+  }
+
   Rectangle {
     id: pill
-    visible: strip.currentIndex !== -1
-    width: strip.segment - 4
+    visible: strip.currentIndex !== -1 && !island.glassOn
+    x: strip.leftEdge
+    width: Math.max(height, strip.rightEdge - strip.leftEdge)
     height: parent.height - 4
     y: 2
-    x: Math.max(0, strip.currentIndex) * strip.segment + 2
     radius: height / 2
     color: Theme.fillHover
-    Behavior on x {
-      enabled: !Theme.reduceMotion
-      SpringAnimation { spring: 5.0; damping: 0.7; epsilon: 0.1 }
-    }
+  }
+  LiquidGlass {
+    id: lens
+    visible: strip.currentIndex !== -1 && island.glassOn && strip.shown
+    x: 0
+    y: -6
+    width: strip.segment * island.pages.length
+    height: parent.height + 12
+    // Squeezes a little as it stretches, like a drop in motion.
+    readonly property real stretch: Math.max(0, (strip.rightEdge - strip.leftEdge) - (strip.segment - 4))
+    readonly property real squeeze: Math.min(5, stretch * 0.05)
+    rectA: Qt.vector4d(strip.leftEdge, 8 + squeeze / 2, Math.max(10, strip.rightEdge - strip.leftEdge), strip.height - 4 - squeeze)
+    radA: { var r = (strip.height - 4 - squeeze) / 2; return Qt.vector4d(r, r, r, r) }
+    blend: 4
+    tint: Qt.rgba(1, 1, 1, 0.13)
+    light: island.glassLight
+    rim: 1.25
+    energy: strip.lensEnergy
   }
 
   Repeater {

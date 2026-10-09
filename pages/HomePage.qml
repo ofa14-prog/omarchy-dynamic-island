@@ -86,9 +86,32 @@ Page {
           caption: I18n.t("Pil")
           tone: island.batteryPercent <= 15 ? Theme.red : Theme.green
         }
-        Column {
+        Grid {
           anchors.verticalCenter: parent.verticalCenter
+          columns: 2
           spacing: 6
+          // Theme: Normal or Liquid Glass; click for the list.
+          Rectangle {
+            width: 28; height: 28
+            radius: 14
+            color: themeMouse.containsMouse || page.themeOpen ? Theme.fillHover : Theme.fill
+            Icon {
+              anchors.centerIn: parent
+              name: island.glassOn ? "droplet" : "square-solid"
+              size: 15
+              color: Theme.fg
+            }
+            MouseArea {
+              id: themeMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: { page.langOpen = false; page.themeOpen = !page.themeOpen }
+            }
+            Accessible.role: Accessible.ComboBox
+            Accessible.name: I18n.t("Tema") + ": " + (island.glassOn ? "Liquid Glass" : I18n.t("Normal"))
+            Accessible.onPressAction: page.themeOpen = !page.themeOpen
+          }
           // Language: the current flag; click for the list.
           Rectangle {
             id: langButton
@@ -105,7 +128,7 @@ Page {
               anchors.fill: parent
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: page.langOpen = !page.langOpen
+              onClicked: { page.themeOpen = false; page.langOpen = !page.langOpen }
             }
             Accessible.role: Accessible.ComboBox
             Accessible.name: I18n.t("Dil") + ": " + (I18n.languages.find(l => l.code === I18n.lang) || {}).name
@@ -348,7 +371,7 @@ Page {
 
   // ---- language list
   property bool langOpen: false
-  onShownChanged: if (!shown) langOpen = false
+  onShownChanged: if (!shown) { langOpen = false; themeOpen = false }
 
   MouseArea {
     anchors.fill: parent
@@ -424,6 +447,91 @@ Page {
           }
           Accessible.role: Accessible.ListItem
           Accessible.name: langRow.modelData.name
+        }
+      }
+    }
+  }
+
+  // ---- theme list
+  property bool themeOpen: false
+  MouseArea {
+    anchors.fill: parent
+    visible: page.themeOpen
+    z: 9
+    onClicked: page.themeOpen = false
+  }
+  Rectangle {
+    z: 10
+    anchors.right: parent.right
+    y: 64
+    width: 196
+    height: themeList.implicitHeight + 12
+    radius: 16
+    color: "#1c1c1e"
+    border.width: 1
+    border.color: Qt.rgba(1, 1, 1, 0.10)
+    opacity: page.themeOpen ? 1 : 0
+    visible: opacity > 0.01
+    scale: page.themeOpen ? 1 : 0.94
+    transformOrigin: Item.TopRight
+    Behavior on opacity { NumberAnimation { duration: Theme.ms(140) } }
+    Behavior on scale {
+      enabled: !Theme.reduceMotion
+      SpringAnimation { spring: 5; damping: 0.45; epsilon: 0.005 }
+    }
+    Column {
+      id: themeList
+      x: 6; y: 6
+      width: parent.width - 12
+      spacing: 2
+      Repeater {
+        model: [
+          { glass: false, name: I18n.t("Normal"), icon: "square-solid" },
+          { glass: true, name: "Liquid Glass", icon: "droplet" }
+        ]
+        delegate: Rectangle {
+          id: themeRow
+          required property var modelData
+          readonly property bool current: modelData.glass === island.glassOn
+          width: parent.width
+          height: 36
+          radius: 11
+          color: rowMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+          Icon {
+            id: rowIcon
+            x: 10
+            anchors.verticalCenter: parent.verticalCenter
+            name: themeRow.modelData.icon
+            size: 18
+            color: Theme.fg
+          }
+          Label {
+            anchors.left: rowIcon.right
+            anchors.leftMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: themeRow.modelData.name
+            font.pixelSize: 13
+            strong: themeRow.current
+          }
+          Icon {
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            visible: themeRow.current
+            name: "check"
+            size: 15
+            color: Theme.blue
+          }
+          MouseArea {
+            id: rowMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { island.setConfig("glass", themeRow.modelData.glass); page.themeOpen = false }
+          }
+          Accessible.role: Accessible.RadioButton
+          Accessible.name: themeRow.modelData.name
+          Accessible.checked: themeRow.current
         }
       }
     }

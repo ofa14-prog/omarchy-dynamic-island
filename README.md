@@ -40,6 +40,10 @@ right from the island.
   flows back in, split halves part with a thinning bridge, and the glass flexes and lights up when
   it opens, closes or is touched. The blur is set up at runtime for the island's layer only (see
   "Liquid Glass" below); `"glass": false` turns it all off, `"glassOpacity"` sets how dark it is.
+  The tab bar's selection is a small glass lens that stretches like a drop toward the tab you pick
+  and pulls itself together (its two edges move on separate springs).
+- **Theme**: pick **Normal** (solid black) or **Liquid Glass** from the button next to the flag on
+  Home (saved as `glass`).
 - **Home**: time, date and battery; a usage card per installed agent (its mark and two rings,
   5-hour and weekly, like Claude Code's; running agents first; click one to open it); and a
   grid of shortcuts to your *default* agent, editor, browser, file manager and terminal (with their
