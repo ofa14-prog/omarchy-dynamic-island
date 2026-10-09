@@ -847,9 +847,14 @@ Item {
   property real pullX: 0
   property real pullY: 0
   property real pullAmp: 0
-  Behavior on pullX { enabled: !Theme.reduceMotion; SpringAnimation { spring: 4.5; damping: 0.42; epsilon: 0.05 } }
-  Behavior on pullY { enabled: !Theme.reduceMotion; SpringAnimation { spring: 4.5; damping: 0.42; epsilon: 0.05 } }
-  Behavior on pullAmp { enabled: !Theme.reduceMotion; SpringAnimation { spring: 3; damping: 0.3; epsilon: 0.02 } }
+  // Stiff and quick: it answers the pointer at once, with just enough
+  // trail to read as liquid. Rises in 90 ms; lets go a little softer.
+  Behavior on pullX { enabled: !Theme.reduceMotion; SpringAnimation { spring: 16; damping: 0.75; epsilon: 0.1 } }
+  Behavior on pullY { enabled: !Theme.reduceMotion; SpringAnimation { spring: 16; damping: 0.75; epsilon: 0.1 } }
+  Behavior on pullAmp {
+    enabled: !Theme.reduceMotion
+    NumberAnimation { duration: island.pullAmp > 0.1 && !hover.hovered ? 260 : 90; easing.type: Easing.OutCubic }
+  }
   property real glassEnergy: 0
   function flash() {
     if (!glassOn || Theme.reduceMotion) return

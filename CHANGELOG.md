@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.15.3
+
+- Liquid Glass: the swell toward the pointer answers at once (stiff spring on its position,
+  90 ms rise) instead of trailing behind; it still lets go softly. No extra work per frame.
+
 ## 1.15.2
 
 - Normal theme no longer borrows Liquid Glass motion: the tab selection is a plain pill that
