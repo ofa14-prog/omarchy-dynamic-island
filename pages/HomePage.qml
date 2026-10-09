@@ -98,7 +98,7 @@ Page {
             GlassSheen { lit: themeMouse.containsMouse }
             Icon {
               anchors.centerIn: parent
-              name: island.glassOn ? "droplet" : "square-solid"
+              name: island.glassOn ? "droplet" : island.lightMode ? "sun" : "moon"
               size: 15
               color: Theme.fg
             }
@@ -110,7 +110,7 @@ Page {
               onClicked: { page.langOpen = false; page.themeOpen = !page.themeOpen }
             }
             Accessible.role: Accessible.ComboBox
-            Accessible.name: I18n.t("Tema") + ": " + (island.glassOn ? "Liquid Glass" : I18n.t("Normal"))
+            Accessible.name: I18n.t("Tema") + ": " + (island.lightMode ? I18n.tc("Açık|appearance") : I18n.t("Koyu")) + (island.glassOn ? ", Liquid Glass" : "")
             Accessible.onPressAction: page.themeOpen = !page.themeOpen
           }
           // Language: the current flag; click for the list.
@@ -391,10 +391,10 @@ GlassSheen {}
     width: 176
     height: langList.implicitHeight + 12
     radius: 16
-    color: Theme.glass ? Qt.rgba(0.11, 0.11, 0.12, 0.88) : "#1c1c1e"
+    color: Theme.popup
     GlassSheen {}
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge
     opacity: page.langOpen ? 1 : 0
     visible: opacity > 0.01
     scale: page.langOpen ? 1 : 0.94
@@ -474,10 +474,10 @@ GlassSheen {}
     width: 196
     height: themeList.implicitHeight + 12
     radius: 16
-    color: Theme.glass ? Qt.rgba(0.11, 0.11, 0.12, 0.88) : "#1c1c1e"
+    color: Theme.popup
     GlassSheen {}
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge
     opacity: page.themeOpen ? 1 : 0
     visible: opacity > 0.01
     scale: page.themeOpen ? 1 : 0.94
@@ -492,56 +492,112 @@ GlassSheen {}
       x: 6; y: 6
       width: parent.width - 12
       spacing: 2
+      // Appearance: dark or light.
       Repeater {
         model: [
-          { glass: false, name: I18n.t("Normal"), icon: "square-solid" },
-          { glass: true, name: "Liquid Glass", icon: "droplet" }
+          { mode: "dark", name: I18n.t("Koyu"), icon: "moon" },
+          { mode: "light", name: I18n.tc("Açık|appearance"), icon: "sun" }
         ]
         delegate: Rectangle {
-          id: themeRow
+          id: modeRow
           required property var modelData
-          readonly property bool current: modelData.glass === island.glassOn
+          readonly property bool current: (modelData.mode === "light") === island.lightMode
           width: parent.width
           height: 36
           radius: 11
-          color: rowMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+          color: modeMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
           GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
           Icon {
-            id: rowIcon
+            id: modeIcon
             x: 10
             anchors.verticalCenter: parent.verticalCenter
-            name: themeRow.modelData.icon
+            name: modeRow.modelData.icon
             size: 18
             color: Theme.fg
           }
           Label {
-            anchors.left: rowIcon.right
+            anchors.left: modeIcon.right
             anchors.leftMargin: 10
             anchors.verticalCenter: parent.verticalCenter
-            text: themeRow.modelData.name
+            text: modeRow.modelData.name
             font.pixelSize: 13
-            strong: themeRow.current
+            strong: modeRow.current
           }
           Icon {
             anchors.right: parent.right
             anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
-            visible: themeRow.current
+            visible: modeRow.current
             name: "check"
             size: 15
             color: Theme.blue
           }
           MouseArea {
-            id: rowMouse
+            id: modeMouse
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: { island.setConfig("glass", themeRow.modelData.glass); page.themeOpen = false }
+            onClicked: island.setConfig("appearance", modeRow.modelData.mode)
           }
           Accessible.role: Accessible.RadioButton
-          Accessible.name: themeRow.modelData.name
-          Accessible.checked: themeRow.current
+          Accessible.name: modeRow.modelData.name
+          Accessible.checked: modeRow.current
         }
+      }
+      Rectangle { width: parent.width - 16; x: 8; height: 1; color: Theme.hairline }
+      // Liquid Glass: on or off, in either appearance.
+      Rectangle {
+        width: parent.width
+        height: 38
+        radius: 11
+        color: glassMouse.containsMouse ? Theme.fillHover : "transparent"
+        Icon {
+          id: glassIcon
+          x: 10
+          anchors.verticalCenter: parent.verticalCenter
+          name: "droplet"
+          size: 18
+          color: Theme.fg
+        }
+        Label {
+          anchors.left: glassIcon.right
+          anchors.leftMargin: 10
+          anchors.verticalCenter: parent.verticalCenter
+          text: "Liquid Glass"
+          font.pixelSize: 13
+          strong: island.glassOn
+        }
+        // Switch, iOS style.
+        Rectangle {
+          id: track
+          anchors.right: parent.right
+          anchors.rightMargin: 8
+          anchors.verticalCenter: parent.verticalCenter
+          width: 38; height: 22; radius: 11
+          color: island.glassOn ? Theme.green : Theme.ink(Theme.light ? 0.16 : 0.22)
+          Behavior on color { ColorAnimation { duration: Theme.ms(160) } }
+          Rectangle {
+            width: 18; height: 18; radius: 9
+            y: 2
+            x: island.glassOn ? parent.width - width - 2 : 2
+            color: "#ffffff"
+            Behavior on x {
+              enabled: !Theme.reduceMotion
+              SpringAnimation { spring: 6; damping: 0.55; epsilon: 0.2 }
+            }
+          }
+        }
+        MouseArea {
+          id: glassMouse
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: island.setConfig("glass", !island.glassOn)
+        }
+        Accessible.role: Accessible.CheckBox
+        Accessible.name: "Liquid Glass"
+        Accessible.checked: island.glassOn
+        Accessible.onPressAction: island.setConfig("glass", !island.glassOn)
       }
     }
   }

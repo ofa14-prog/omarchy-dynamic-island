@@ -28,7 +28,7 @@ FocusScope {
   readonly property bool hovered: mouse.containsMouse
   readonly property bool down: mouse.pressed || keyDown
   property bool keyDown: false
-  readonly property color contentColor: prominent ? "#000000" : tint
+  readonly property color contentColor: prominent ? Theme.onTint : tint
 
   implicitHeight: size
   implicitWidth: text === "" ? size : content.width + Math.round(size * 0.9)

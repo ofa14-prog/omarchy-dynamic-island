@@ -34,7 +34,7 @@ Page {
     width: strip.segment * island.pages.length
     height: parent.height
     radius: height / 2
-    color: Qt.rgba(1, 1, 1, 0.06)
+    color: Theme.ink(Theme.light ? 0.05 : 0.06)
 GlassSheen { strength: 0.7 }
   }
 
@@ -189,7 +189,8 @@ GlassSheen { strength: 0.7 }
     rectA: Qt.vector4d(strip.leftEdge, 8 + squeeze / 2, Math.max(10, strip.rightEdge - strip.leftEdge), strip.height - 4 - squeeze)
     radA: { var r = (strip.height - 4 - squeeze) / 2; return Qt.vector4d(r, r, r, r) }
     blend: 4
-    tint: Qt.rgba(1, 1, 1, 0.13)
+    tint: Theme.light ? Qt.rgba(1, 1, 1, 0.55) : Qt.rgba(1, 1, 1, 0.13)
+    dark: Theme.light ? 1 : 0
     light: island.glassLight
     rim: 1.25
     energy: strip.lensEnergy

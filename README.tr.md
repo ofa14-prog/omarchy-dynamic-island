@@ -43,8 +43,10 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   Merceği tutup çubuk boyunca sürükleyebilirsiniz; bırakınca en yakın sekmeye oturur. Kapalı adanın
   üzerinde cam imlece doğru yumuşakça şişer, imleç ayrılınca geri akar; hiç kopmaz.
 - Liquid Glass temasında tüm düğmeler, kutular, kartlar, satırlar ve açılır menüler de cam görünümündedir.
-- **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Normal** (düz siyah) ya da **Liquid Glass**
-  seçilir (`glass` olarak kaydedilir).
+- **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Koyu** ya da **Açık** görünüm ve her ikisinde
+  açılıp kapatılabilen **Liquid Glass** seçilir (`appearance` ve `glass`). Dört görünüm: düz siyah,
+  koyu dumanlı cam, düz beyaz ve açık şeffaf cam (kapalıyken şeffaf, açıkken yazılar okunsun diye
+  biraz daha sütlü; `glassOpacityLight` ile ayarlanır).
 - **Ana sayfa**: saat, tarih ve pil; kurulu her ajan için bir kullanım kartı (logosu ve Claude
   Code'daki gibi iki halka: 5 saat ve haftalık; çalışanlar önce; tıklayınca o ajan açılır) ve *varsayılan* ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi
   uygulama ikonlarıyla ızgara şeklinde kısayollar.

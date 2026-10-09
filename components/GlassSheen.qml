@@ -23,16 +23,17 @@ Item {
     radius: sheen.radius
     color: "transparent"
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.09 * sheen.k)
+    // Light: a faint shade outlines the glass; dark: a faint light edge.
+    border.color: Theme.light ? Qt.rgba(0, 0, 0, 0.07 * sheen.k) : Qt.rgba(1, 1, 1, 0.09 * sheen.k)
   }
   // Highlight across the top.
   Rectangle {
     anchors.fill: parent
     radius: sheen.radius
     gradient: Gradient {
-      GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.10 * sheen.k) }
-      GradientStop { position: 0.45; color: Qt.rgba(1, 1, 1, 0.015 * sheen.k) }
-      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.06 * sheen.k) }
+      GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, (Theme.light ? 0.55 : 0.10) * sheen.k) }
+      GradientStop { position: 0.45; color: Qt.rgba(1, 1, 1, (Theme.light ? 0.18 : 0.015) * sheen.k) }
+      GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, (Theme.light ? 0.03 : 0.06) * sheen.k) }
     }
   }
   // Bright rim along the upper curve, in two steps so it fades.
@@ -46,7 +47,7 @@ Item {
       radius: sheen.radius
       color: "transparent"
       border.width: 1
-      border.color: Qt.rgba(1, 1, 1, 0.12 * sheen.k)
+      border.color: Qt.rgba(1, 1, 1, (Theme.light ? 0.6 : 0.12) * sheen.k)
     }
   }
   Item {
@@ -59,7 +60,7 @@ Item {
       radius: sheen.radius
       color: "transparent"
       border.width: 1
-      border.color: Qt.rgba(1, 1, 1, 0.20 * sheen.k)
+      border.color: Qt.rgba(1, 1, 1, (Theme.light ? 0.9 : 0.20) * sheen.k)
     }
   }
 }

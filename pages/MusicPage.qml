@@ -123,7 +123,7 @@ GlassSheen { strength: 0.6 }
           width: Math.max(parent.height, parent.width * scrub.fraction)
           height: parent.height
           radius: height / 2
-          color: scrub.dragging ? Theme.fg : Qt.rgba(1, 1, 1, 0.85)
+          color: scrub.dragging ? Theme.fg : Theme.ink(0.85)
         }
       }
 
@@ -269,10 +269,10 @@ GlassSheen { strength: 0.6 }
     width: Math.min(parent.width, 320)
     height: Math.min(pickerList.contentHeight + 40, chip.y - 6)
     radius: 16
-    color: Theme.glass ? Qt.rgba(0.11, 0.11, 0.12, 0.88) : "#1c1c1e"
+    color: Theme.popup
     GlassSheen {}
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge
 
     Item {
       id: pickerHead

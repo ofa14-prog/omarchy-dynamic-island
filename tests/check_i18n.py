@@ -11,7 +11,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent
 used = set()
 for f in list(root.rglob("*.qml")) + list(root.rglob("*.js")):
-    for m in re.finditer(r'I18n\.t\(\s*"((?:[^"\\]|\\.)*)"', f.read_text()):
+    for m in re.finditer(r'I18n\.tc?\(\s*"((?:[^"\\]|\\.)*)"', f.read_text()):
         used.add(json.loads('"' + m.group(1) + '"'))
 bridge = (root / "services/AgentBridge.qml").read_text()
 used |= set(re.findall(r'label:\s*"([^"]+)"', bridge))

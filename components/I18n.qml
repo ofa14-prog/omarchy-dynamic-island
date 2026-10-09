@@ -20,6 +20,13 @@ QtObject {
   ]
   readonly property var codes: languages.map(l => l.code)
 
+  // Like t(), for a source string that is also used with another meaning
+  // elsewhere: the key carries a "|context" suffix that Turkish drops.
+  function tc(s) {
+    var v = t(s)
+    return v === s ? s.split("|")[0] : v
+  }
+
   function t(s) {
     if (lang === "tr") return s
     var table = lang === "es" ? Tr.es : lang === "ru" ? Tr.ru : Tr.en

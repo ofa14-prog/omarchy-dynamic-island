@@ -7,6 +7,7 @@ Item {
   id: music
 
   property bool tracking: false   // a view shows the progress bar
+  property bool light: false      // light appearance (the accent goes deep)
 
   readonly property var players: Mpris.players ? Mpris.players.values : []
   // The player you picked on the music page. It stays the shown one while it
@@ -108,7 +109,7 @@ Item {
   // carry the previous player's colors over.
   readonly property bool hasArt: artUrl !== ""
   readonly property color accent: {
-    if (!hasArt) return "#ffffff"
+    if (!hasArt) return light ? "#1d1d1f" : "#ffffff"
     var colors = quantizer.colors || []
     var best = null, bestScore = -1
     for (var i = 0; i < colors.length; i++) {
@@ -117,8 +118,10 @@ Item {
       if (c.hsvValue < 0.25) score -= 1
       if (score > bestScore) { bestScore = score; best = c }
     }
-    if (!best) return "#ffffff"
-    return Qt.hsva(best.hsvHue < 0 ? 0 : best.hsvHue, Math.min(best.hsvSaturation, 0.75), Math.max(best.hsvValue, 0.85), 1)
+    if (!best) return light ? "#1d1d1f" : "#ffffff"
+    // Bright on the dark island, deep on the light one.
+    return light ? Qt.hsva(best.hsvHue < 0 ? 0 : best.hsvHue, Math.max(0.5, Math.min(best.hsvSaturation, 0.9)), Math.min(best.hsvValue, 0.62), 1)
+                 : Qt.hsva(best.hsvHue < 0 ? 0 : best.hsvHue, Math.min(best.hsvSaturation, 0.75), Math.max(best.hsvValue, 0.85), 1)
   }
 
   // Ambient glow around the island: the two most vivid, clearly different

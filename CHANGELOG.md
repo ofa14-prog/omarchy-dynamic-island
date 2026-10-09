@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.17.0
+
+- **Light appearance**: a white island with near-black content, iOS light system colors, light
+  popups and fills. Liquid Glass is now a separate switch that works in both appearances:
+  dark glass (smoky) or light glass (clear, with a faint dark outline; milkier while open so
+  text stays readable over dark windows).
+- Theme picker on Home: Dark / Light, plus a Liquid Glass on/off switch.
+- Everything that assumed a black island now follows the theme: text, fills, borders, popups,
+  the tab bar, glass finishes, the music accent and backdrop, and near-white agent marks
+  (Codex, OpenCode…), which turn near-black on white.
+
 ## 1.16.0
 
 - Liquid Glass reaches every surface: buttons, shortcut tiles, usage cards, session rows, the

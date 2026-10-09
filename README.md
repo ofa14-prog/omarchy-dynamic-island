@@ -45,8 +45,10 @@ right from the island.
   the bar; let go and it lands on the nearest tab (Liquid Glass only; in Normal it is a plain pill). Over the closed island the glass swells softly
   toward the pointer and flows back when it leaves, without ever tearing.
 - Under Liquid Glass every button, tile, card, row and popup has a glass finish too.
-- **Theme**: pick **Normal** (solid black) or **Liquid Glass** from the button next to the flag on
-  Home (saved as `glass`).
+- **Theme**: **Dark** or **Light** appearance, and **Liquid Glass** on or off in either, from the
+  button next to the flag on Home (saved as `appearance` and `glass`). Four looks: solid black,
+  dark smoky glass, solid white, and clear light glass (clear while closed, milkier when open so
+  text stays readable; `glassOpacityLight` tunes it).
 - **Home**: time, date and battery; a usage card per installed agent (its mark and two rings,
   5-hour and weekly, like Claude Code's; running agents first; click one to open it); and a
   grid of shortcuts to your *default* agent, editor, browser, file manager and terminal (with their

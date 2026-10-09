@@ -143,7 +143,7 @@ Page {
           size: 22
           iconSize: 12
           icon: "x"
-          fillColor: "#3a3a3c"
+          fillColor: Theme.chip
           opacity: tileMouse.containsMouse || hovered ? 1 : 0
           visible: opacity > 0
           accessibleName: tile.modelData.name + I18n.t(" dosyasını raftan kaldır")

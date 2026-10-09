@@ -496,7 +496,7 @@ GlassSheen { strength: 0.7 }
       width: parent.width
       height: big ? 340 : 168
       radius: 16
-      color: Qt.rgba(1, 1, 1, 0.05)
+      color: Theme.ink(0.05)
 GlassSheen {}
       border.width: 1
       border.color: Theme.hairline
@@ -669,7 +669,7 @@ GlassSheen {}
         width: 3
         height: Math.max(16, feedList.visibleArea.heightRatio * feedList.height)
         radius: 1.5
-        color: Qt.rgba(1, 1, 1, 0.22)
+        color: Theme.ink(0.22)
       }
     }
 
@@ -713,7 +713,7 @@ GlassSheen {}
         clip: true
         color: Theme.fg
         selectionColor: composer.tint
-        selectedTextColor: "#000000"
+        selectedTextColor: Theme.onTint
         selectByMouse: true
         font.family: Theme.font
         font.pixelSize: 13

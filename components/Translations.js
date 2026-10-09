@@ -4,6 +4,8 @@
 .pragma library
 
 var en = {
+  "Açık|appearance": "Light",
+  "Koyu": "Dark",
   "Tema": "Theme",
   "Normal": "Normal",
   "Kopyalandı": "Copied",
@@ -182,6 +184,8 @@ var en = {
 }
 
 var es = {
+  "Açık|appearance": "Claro",
+  "Koyu": "Oscuro",
   "Tema": "Tema",
   "Normal": "Normal",
   "Kopyalandı": "Copiado",
@@ -360,6 +364,8 @@ var es = {
 }
 
 var ru = {
+  "Açık|appearance": "Светлая",
+  "Koyu": "Тёмная",
   "Tema": "Тема",
   "Normal": "Обычная",
   "Kopyalandı": "Скопировано",

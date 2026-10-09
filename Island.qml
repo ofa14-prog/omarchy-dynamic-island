@@ -92,7 +92,10 @@ Item {
     compactHeight: "auto",
     topOffset: "auto",
     expandedWidth: 500,
-    color: "#000000",
+    appearance: "dark",     // dark | light
+    color: "#000000",       // island color, dark appearance
+    lightColor: "#ffffff",  // island color, light appearance
+    glassOpacityLight: 0.26, // how milky the light glass is (0..1; low = clear)
     screen: "",
     peekOnTrackChange: true,
     peekOnAgentDone: true,
@@ -144,7 +147,9 @@ Item {
     userConfig = next
     configFile.setText(JSON.stringify(next, null, 2) + "\n")
   }
-  Binding { target: Theme; property: "bg"; value: island.cfg("color") }
+  readonly property bool lightMode: cfg("appearance") === "light"
+  Binding { target: Theme; property: "light"; value: island.lightMode }
+  Binding { target: Theme; property: "bg"; value: island.lightMode ? island.cfg("lightColor") : island.cfg("color") }
   Binding { target: Theme; property: "glass"; value: island.glassOn }
 
   // Text follows the Omarchy system font (omarchy font set …).
@@ -256,6 +261,9 @@ Item {
     for (var k in p) out[k] = p[k]
     out.color = Qt.lighter(p.color, 1.0)
     out.glow = Qt.lighter(p.glow, 1.0)
+    // Near-white brand colors (Codex, OpenCode…) vanish on a white island:
+    // in light mode they turn near-black.
+    if (Theme.light && out.color.hslLightness > 0.82) { out.color = "#1d1d1f"; out.glow = "#6e6e73" }
     return out
   }
   function logoFor(id) {
@@ -411,6 +419,7 @@ Item {
   MusicService {
     id: musicSvc
     tracking: island.mode === "expanded" && island.page === "music"
+    light: island.lightMode
     onTrackChanged: {
       if (island.cfg("peekOnTrackChange") && island.mode === "compact" && island.primary === "music")
         island.peek("music", music.title, music.artist, Theme.fg, 2400, "music")
@@ -1234,7 +1243,7 @@ Item {
           offset.y: 8
           // Under glass a dark shadow would show through: kept light, and
           // below the blur threshold so it is never frosted.
-          color: Qt.rgba(0, 0, 0, island.glassOn ? 0.28 : 0.55)
+          color: Qt.rgba(0, 0, 0, Theme.light ? (island.glassOn ? 0.14 : 0.22) : (island.glassOn ? 0.28 : 0.55))
           opacity: island.mode === "compact" ? 0 : 1
           Behavior on opacity { NumberAnimation { duration: Theme.ms(260) } }
         }
@@ -1278,7 +1287,14 @@ Item {
           bub0: bubbleAt(rightBubble)
           bub1: bubbleAt(leftBubble)
           blend: island.mode === "compact" ? 11 : 4
-          tint: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.36, Math.min(0.95, Number(island.cfg("glassOpacity")) || 0.56)))
+          // Dark glass is smoky; light glass is clear, a thin milky tint.
+          tint: Theme.light
+            // Clear while compact; milkier when open, so dark text stays
+            // readable even over a dark window behind (no adaptive vibrancy here).
+            ? Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.08, Math.min(0.95,
+                (Number(island.cfg("glassOpacityLight")) || 0.26) + (island.mode === "compact" ? 0.10 : 0.48))))
+            : Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.36, Math.min(0.95, Number(island.cfg("glassOpacity")) || 0.56)))
+          dark: Theme.light
           light: island.glassLight
           energy: island.glassEnergy
           ambL: ambient.leftColor
@@ -1298,7 +1314,7 @@ Item {
           radius: island.targetR
           color: island.halvesOn || island.glassOn ? "transparent" : Theme.bg
           border.width: island.halvesOn || island.glassOn ? 0 : 1
-          border.color: island.mode === "compact" ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.10)
+          border.color: island.mode === "compact" ? Theme.edge : Theme.ink(Theme.light ? 0.14 : 0.10)
           antialiasing: true
 
           Behavior on width {
@@ -1336,8 +1352,10 @@ Item {
               NumberAnimation { duration: Theme.ms(280); easing.type: Easing.OutCubic }
             }
 
-            property color c1: Qt.darker(island.music.ambient[0], 1.5)
-            property color c2: Qt.darker(island.music.ambient[1], 1.5)
+            // Dark: deepened so white text reads; light: washed out so dark
+            // text does.
+            property color c1: Theme.light ? Qt.tint(island.music.ambient[0], Qt.rgba(1, 1, 1, 0.55)) : Qt.darker(island.music.ambient[0], 1.5)
+            property color c2: Theme.light ? Qt.tint(island.music.ambient[1], Qt.rgba(1, 1, 1, 0.55)) : Qt.darker(island.music.ambient[1], 1.5)
             Behavior on c1 { ColorAnimation { duration: 1500 } }
             Behavior on c2 { ColorAnimation { duration: 1500 } }
 
@@ -1455,7 +1473,7 @@ Item {
               readonly property color agentTint: island.profile(island.splitOrder[modelData] || "").color
               color: island.glassOn ? "transparent" : Theme.bg
               border.width: lit ? 1.5 : 1
-              border.color: lit ? Qt.rgba(agentTint.r, agentTint.g, agentTint.b, 0.6) : island.glassOn ? "transparent" : Qt.rgba(1, 1, 1, 0.06)
+              border.color: lit ? Qt.rgba(agentTint.r, agentTint.g, agentTint.b, 0.6) : island.glassOn ? "transparent" : Theme.edge
               Behavior on border.color { ColorAnimation { duration: Theme.ms(160) } }
               topLeftRadius: modelData === 0 ? height / 2 : inner
               bottomLeftRadius: modelData === 0 ? height / 2 : inner

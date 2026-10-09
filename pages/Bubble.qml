@@ -106,7 +106,7 @@ Item {
     // can merge with the island); the bubble only holds its content.
     color: island.glassOn ? "transparent" : Theme.bg
     border.width: island.glassOn ? 0 : 1
-    border.color: Qt.rgba(1, 1, 1, 0.06)
+    border.color: Theme.edge
     scale: (mouse.pressed ? 0.88 : bubble.hovered ? 1.08 : 1) * bubble.pop
     Behavior on scale {
       enabled: !Theme.reduceMotion
@@ -205,7 +205,7 @@ Item {
     radius: 15
     color: Theme.bg
     border.width: 1
-    border.color: Qt.rgba(1, 1, 1, 0.10)
+    border.color: Theme.edge
     opacity: open ? 1 : 0
     visible: opacity > 0.01
     Behavior on opacity { NumberAnimation { duration: Theme.ms(160) } }

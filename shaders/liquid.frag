@@ -32,6 +32,8 @@ layout(std140, binding = 0) uniform buf {
     float ambMix;   // 0: none, 1: full (follows the sound)
     vec4 pull;      // pointer: x, y, reach (px), sigma (px). The glass swells
                     // toward it like a drop drawn by a finger, never tearing
+    float dark;     // light appearance: a faint dark outline, so clear glass
+                    // still reads against light backgrounds
 };
 
 float sdRoundBox(vec2 p, vec2 b, vec4 r) {
@@ -103,5 +105,10 @@ void main() {
     vec3 light = mix(vec3(1.0), amb, ambMix * 0.7) * lit;
     vec3 col = tint.rgb * tint.a + film + light;
     float a = clamp(tint.a + lit * 0.9 + ambMix * 0.06, 0.0, 1.0);
+    // Light glass: a hairline of shade just inside the edge (alpha only, so
+    // it darkens whatever is behind), under the highlight.
+    float outline = (1.0 - smoothstep(0.0, 1.2, inside)) * dark * 0.22;
+    col *= 1.0 - outline * 0.4;
+    a = clamp(a + outline, 0.0, 1.0);
     fragColor = vec4(col, a) * cover * qt_Opacity;
 }

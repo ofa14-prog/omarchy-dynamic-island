@@ -12,7 +12,8 @@ Item {
   property bool running: true
   property int size: 16
   readonly property var profile: Agents.get(agent)
-  property color color: profile.color
+  // Near-white brand colors turn near-black on the light island.
+  property color color: Theme.light && Qt.lighter(profile.color, 1.0).hslLightness > 0.82 ? "#1d1d1f" : profile.color
 
   readonly property var sequence: profile.pingpong ? profile.frames.concat(profile.frames.slice().reverse()) : profile.frames
   readonly property int restFrame: profile.pingpong ? 4 : 0
