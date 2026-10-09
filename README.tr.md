@@ -42,11 +42,19 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   yüklenir); sağ tık yalnızca takılan adayı düzeltir (oturumlar, istekler, uyarılar).
 - **Ajan**: Omarchy'nin varsayılan ajanını izler (`omarchy default agent …`): adı, logosu, renkleri ve
   spinner'ı. Tüm oturumlar, o an ne yaptıkları ve süreleri; terminale git, klasörü editörde aç, yeni oturum.
-- **Ajan çubuğu**: desteklenen birden fazla ajan kuruluysa (Claude Code, Codex, Antigravity CLI,
-  OpenCode) ajan sayfasındaki logo küçük bir çubuğa dönüşür. Tıklayınca kurulu tüm ajanlara açılır;
-  birini seçince sayfa, sekme, renkler ve "Yeni oturum" ona geçer (`agent` olarak kaydedilir).
-  Kapalı çubuktaki ya da bir ajanın ikonundaki nokta, başka bir ajanın çalıştığını ya da sizi
-  beklediğini gösterir.
+- **AI sekmesi**: o an çalışana göre adlanır: tek ajanın canlı oturumu varsa onun logosu ve adı,
+  birkaç ajan varsa yalnızca logoları (iki tane, sonra "…"), hiçbiri yoksa "AI".
+- **Ajan çubuğu**: birden fazla ajan çalışırken AI sayfasındaki logo küçük bir çubuğa dönüşür.
+  Tıklayınca çalışan ajanlara açılır; birini seçince oturumlar, canlı akış, kullanım, "Bağla" ve
+  "Yeni oturum" ona geçer. Sayfa en acil ajanla açılır (sizi bekleyen, sonra çalışan); ada
+  kapanınca yine ona döner. Kapalı çubuktaki ya da bir ajan ikonundaki nokta, başka bir ajanın
+  çalıştığını (kendi renginde) ya da sizi beklediğini (turuncu, yanıp sönen) gösterir.
+- **İki ajan aynı anda**: iki farklı ajan çalışırken kapalı ada ortadan ikiye bölünür, her yarıda
+  bir ajan (spinner, durum, logo). Her ajan çalıştığı sürece kendi tarafında kalır; bir yarıya
+  tıklamak o ajanı açar. Biri boşa düşünce iki yarı yeniden tek adada birleşir.
+- **Kullanım**: AI sayfası ve Ana sayfa, ekrandaki ajanın 5 saatlik ve haftalık limitlerini gösterir:
+  Claude ve Codex Omarchy'nin ajan panelinden, Antigravity `agy -p /usage` ile (yerel, model
+  çağrısı yok; agy'nin seçili modelinin kota grubu).
 - **Canlı akış** (Claude Code, Codex, Antigravity CLI): oturumların altında son istekler, yanıtlar, araç çağrıları ve
   çıktıları, ajanın kendi terminalindeki gibi. Birden çok oturumda izlemek istediğinize tıklayın;
   akış kaydırılabilir (tekerlek ya da sürükleme); en alttayken yeni çıktıyı izler. Köşedeki ok

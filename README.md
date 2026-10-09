@@ -43,10 +43,19 @@ right from the island.
 - **Agent**: follows Omarchy's default agent (`omarchy default agent …`): its name, mark, colors and
   spinner. Every session, what it is doing right now, elapsed time; jump to its terminal, open its
   folder in your editor, start a new session.
-- **Agent bar**: with more than one supported agent installed (Claude Code, Codex, Antigravity CLI,
-  OpenCode), the agent page's mark becomes a small bar. Click it to open it onto every installed
-  agent and pick one: the page, tab, colors and "New session" switch to it (saved as `agent`). A
-  dot on the closed bar, or on an agent's icon, means another agent is busy or waiting for you.
+- **AI tab**: named after what is running: the agent's mark and name when one agent has a live
+  session, only the marks when several do (two, then "…"), and "AI" when none does.
+- **Agent bar**: with several agents running, the AI page's mark becomes a small bar. Click it to
+  open it onto the running agents and pick one: sessions, live feed, usage, Connect and "New
+  session" switch to it. It opens on the most urgent agent (waiting on you, then working) and
+  goes back to that after the island closes. A dot on the closed bar, or on an agent's icon,
+  means another agent is busy (its color) or waiting for you (orange, pulsing).
+- **Two agents at once**: while two different agents are working, the closed island splits into two
+  halves, one per agent (spinner, status, mark); each keeps its side while it works, and clicking
+  a half opens that agent. When one of them goes idle the halves join back into one island.
+- **Usage**: the AI page and Home show the 5-hour and weekly limits of the agent on screen: Claude
+  and Codex from Omarchy's agents panel, Antigravity from `agy -p /usage` (local, no model call;
+  the quota group of the model agy is set to).
 - **Live feed** (Claude Code, Codex, Antigravity CLI): under the sessions, the last prompts, replies, tool calls and
   their output, drawn the way the agent's terminal draws them. With several sessions, click a row
   to watch that one. It scrolls (wheel or drag) and follows new output while you are at the

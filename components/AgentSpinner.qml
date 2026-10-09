@@ -34,9 +34,36 @@ Item {
     onRunningChanged: if (!running) spinner.step = spinner.restFrame
   }
 
-  Text {
+  readonly property string frame: sequence[Math.min(step, sequence.length - 1)] || ""
+  // Braille frames (every agent but Claude) are drawn as real dots on a 2×4
+  // grid, centered in the box: font glyphs for braille sit off-center and
+  // overflow their cell, so the spinner used to spill past the island.
+  readonly property int code: frame.length === 1 ? frame.charCodeAt(0) : 0
+  readonly property bool braille: code >= 0x2800 && code <= 0x28FF
+  Item {
+    visible: spinner.braille
     anchors.centerIn: parent
-    text: spinner.sequence[Math.min(spinner.step, spinner.sequence.length - 1)]
+    readonly property real cell: spinner.size / 4.4
+    width: cell * 2
+    height: cell * 4
+    Repeater {
+      // dot n (1–8) → bit n-1; columns: 1 2 3 7 left, 4 5 6 8 right
+      model: [[0, 0, 0], [1, 0, 1], [2, 0, 2], [3, 1, 0], [4, 1, 1], [5, 1, 2], [6, 0, 3], [7, 1, 3]]
+      delegate: Rectangle {
+        required property var modelData
+        readonly property real d: parent.cell * 0.72
+        x: modelData[1] * parent.cell + (parent.cell - d) / 2
+        y: modelData[2] * parent.cell + (parent.cell - d) / 2
+        width: d; height: d; radius: d / 2
+        color: spinner.color
+        visible: ((spinner.code - 0x2800) >> modelData[0]) & 1
+      }
+    }
+  }
+  Text {
+    visible: !spinner.braille
+    anchors.centerIn: parent
+    text: spinner.frame
     font.family: Theme.mono
     font.pixelSize: spinner.size
     color: spinner.color

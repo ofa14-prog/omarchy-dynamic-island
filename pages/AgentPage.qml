@@ -11,16 +11,22 @@ Page {
   readonly property var agents: island.agents
   // With several agents installed the page is per agent (the bar switches);
   // otherwise it lists every session.
-  readonly property bool perAgent: island.barAgents.length > 1 && island.barAgents.indexOf(island.agentId) !== -1
-  readonly property var sessions: agents.sessionList.filter(s => !perAgent || s.agent === island.agentId).slice(0, 4)
+  // The page shows one agent at a time (island.pageAgent); the bar switches
+  // between the agents that are running.
+  readonly property string agentId: island.pageAgent
+  readonly property bool perAgent: island.runningAgents.length > 1
+  readonly property var sessions: agents.sessionList.filter(s => !perAgent || s.agent === agentId).slice(0, 4)
+  readonly property string product: island.profile(agentId).product
+  readonly property color tint: island.profile(agentId).color
+  readonly property string logo: island.logoFor(agentId)
 
   implicitHeight: col.implicitHeight + 8
 
-  readonly property var profile: island.agent
+  readonly property var profile: island.profile(agentId)
   // "full" / "status": the agent reports sessions once connected;
   // "none": it has no event API, so there is nothing to connect.
   readonly property bool connectable: profile.integration !== "none"
-  readonly property bool connected: agents.hooksInstalled
+  readonly property bool connected: agents.installed[agentId] === true
 
   onShownChanged: if (!shown) agentBar.open = false
 
@@ -119,14 +125,17 @@ Page {
       width: parent.width
       height: 30
       Row {
+        id: headRow
         anchors.verticalCenter: parent.verticalCenter
         spacing: 10
+        // Room left of the usage readout; the session count gives way first.
+        readonly property real room: parent.width - (usageRow.visible ? usageRow.width + 14 : 0)
         Icon {
           visible: !agentBar.visible
           anchors.verticalCenter: parent.verticalCenter
-          source: island.agentLogo
-          name: island.agentLogo ? "" : "sparkles"
-          color: island.agentColor
+          source: page.logo
+          name: page.logo ? "" : "sparkles"
+          color: page.tint
           size: 22
         }
 
@@ -134,18 +143,18 @@ Page {
         // open it sideways onto every installed agent, click one to switch.
         Rectangle {
           id: agentBar
-          visible: island.barAgents.length > 1
+          visible: island.runningAgents.length > 1
           anchors.verticalCenter: parent.verticalCenter
           property bool open: false
           readonly property int chip: 30
           // Current agent first, the rest after it.
-          readonly property var order: [island.agentId].concat(island.barAgents.filter(a => a !== island.agentId))
+          readonly property var order: [page.agentId].concat(island.runningAgents.filter(a => a !== page.agentId))
           readonly property int closedW: chip + 18
           readonly property int openW: order.length * (chip + 2) + 2
           // Another agent has a session running, or one that needs you.
-          readonly property bool othersBusy: agents.sessionList.some(x => x.agent !== island.agentId && agents.isBusy(x))
-          readonly property bool othersNeed: agents.sessionList.some(x => x.agent !== island.agentId && agents.needsYou(x))
-            || agents.pending.some(r => r.agent !== island.agentId)
+          readonly property bool othersBusy: agents.sessionList.some(x => x.agent !== page.agentId && agents.isBusy(x))
+          readonly property bool othersNeed: agents.sessionList.some(x => x.agent !== page.agentId && agents.needsYou(x))
+            || agents.pending.some(r => r.agent !== page.agentId)
           width: open ? openW : closedW
           height: chip + 4
           radius: height / 2
@@ -158,7 +167,7 @@ Page {
           Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
 
           Accessible.role: Accessible.ComboBox
-          Accessible.name: I18n.t("Ajan") + ": " + island.agentProduct
+          Accessible.name: I18n.t("Ajan") + ": " + page.product
           Accessible.description: I18n.t("Tıkla: ajanları göster")
           Accessible.onPressAction: open = !open
 
@@ -182,7 +191,7 @@ Page {
                 id: chipItem
                 required property string modelData
                 required property int index
-                readonly property bool current: modelData === island.agentId
+                readonly property bool current: modelData === page.agentId
                 readonly property var mine: agents.sessionList.filter(x => x.agent === modelData)
                 readonly property bool busy: mine.some(x => agents.isBusy(x))
                 readonly property bool needs: mine.some(x => agents.needsYou(x)) || agents.pending.some(r => r.agent === modelData)
@@ -233,7 +242,7 @@ Page {
                     // delegate may be gone right after.
                     var pick = chipItem.modelData
                     agentBar.open = false
-                    if (pick !== island.agentId) { page.pickedId = ""; island.setAgent(pick) }
+                    if (pick !== page.agentId) { page.pickedId = ""; island.viewAgent = pick }
                   }
                 }
                 Accessible.role: Accessible.RadioButton
@@ -272,14 +281,18 @@ Page {
         }
 
         Label {
+          id: productLabel
           anchors.verticalCenter: parent.verticalCenter
-          text: island.agentProduct
+          text: page.product
           font.pixelSize: 16
           strong: true
+          readonly property real lead: agentBar.visible ? agentBar.width : 22
+          width: Math.min(implicitWidth, headRow.room - lead - 10)
         }
         Label {
+          id: countLabel
           anchors.verticalCenter: parent.verticalCenter
-          visible: !agentBar.open
+          visible: !agentBar.open && productLabel.lead + productLabel.implicitWidth + implicitWidth + 20 <= headRow.room
           text: page.sessions.length > 0 ? I18n.count(page.sessions.length, "session") : ""
           font.pixelSize: 13
           color: Theme.tertiary
@@ -309,7 +322,7 @@ Page {
               Rectangle {
                 width: Math.max(6, parent.width * Math.min(1, modelData.v))
                 height: parent.height; radius: 3
-                color: modelData.v >= 0.9 ? Theme.red : modelData.v >= 0.7 ? Theme.orange : island.agentColor
+                color: modelData.v >= 0.9 ? Theme.red : modelData.v >= 0.7 ? Theme.orange : page.tint
               }
             }
             Label { text: Math.round(modelData.v * 100) + "%"; font.pixelSize: 12; tabular: true; color: Theme.secondary; anchors.verticalCenter: parent.verticalCenter }
@@ -765,8 +778,8 @@ Page {
         spacing: 3
         Label {
           width: parent.width
-          text: !page.connectable ? I18n.t("%1 canlı oturum paylaşmıyor").arg(island.agentProduct)
-            : page.connected ? I18n.t("Aktif oturum yok") : I18n.t("%1 bağlı değil").arg(island.agentProduct)
+          text: !page.connectable ? I18n.t("%1 canlı oturum paylaşmıyor").arg(page.product)
+            : page.connected ? I18n.t("Aktif oturum yok") : I18n.t("%1 bağlı değil").arg(page.product)
           font.pixelSize: 14
           strong: true
         }
@@ -789,9 +802,9 @@ Page {
         size: 36
         text: I18n.t("Bağla")
         prominent: true
-        tint: island.agentColor
-        accessibleName: I18n.t("%1 bağlantısını kur").arg(island.agentProduct)
-        onClicked: agents.installHooks(island.agentId)
+        tint: page.tint
+        accessibleName: I18n.t("%1 bağlantısını kur").arg(page.product)
+        onClicked: agents.installHooks(page.agentId)
       }
     }
 
@@ -803,8 +816,8 @@ Page {
         icon: "plus"
         text: I18n.t("Yeni oturum")
         fontSize: 13
-        accessibleName: I18n.t("Yeni ") + island.agentName + I18n.t(" oturumu")
-        onClicked: { agents.newSession(); island.collapse() }
+        accessibleName: I18n.t("Yeni ") + page.profile.name + I18n.t(" oturumu")
+        onClicked: { agents.newSession(page.agentId); island.collapse() }
       }
       IslandButton {
         size: 36

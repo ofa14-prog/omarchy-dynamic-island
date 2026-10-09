@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.0
+
+- Closed island: Antigravity's spinner stayed off-center and spilled past the island's edge
+  (braille glyphs overflow their font cell). Braille spinners are now drawn as real dots on a
+  2×4 grid, centered.
+- The agent tab is now **AI**: the running agent's mark and name, only marks when several run
+  (two, then "…"), "AI" when none does. The AI tab always keeps the mark; the name gives way.
+- The agent bar switches between the agents that are *running* (a live session), not the ones
+  installed; the page opens on the most urgent one and goes back to it when the island closes.
+  The choice is no longer written to the config.
+- Two different agents working at once split the closed island into two halves (gap springs
+  open, merges back seamlessly), one agent per side, side kept while it works; click a half to
+  open that agent.
+- Antigravity usage (5-hour / weekly) from `agy -p /usage`; usage follows the agent on screen.
+- "New session" starts the agent on screen.
+
 ## 1.11.0
 
 - **Antigravity CLI** (`agy`) replaces Gemini CLI: live sessions and states, the live feed from

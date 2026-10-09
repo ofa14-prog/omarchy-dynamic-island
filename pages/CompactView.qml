@@ -63,10 +63,117 @@ Page {
     }
   }
 
+  // ---------------------------------------------------------------- two agents
+  // Two agents at work: one per half (island.splitIsland). Each half shows
+  // its agent's most urgent session; clicking it opens that agent's page.
+  component AgentHalf: Item {
+    id: half
+    property string agentId: ""
+    readonly property var sessions: island.agents.sessionList.filter(x => x.agent === agentId)
+    readonly property var session: {
+      void island.agents.revision
+      return sessions.find(x => island.agents.pending.some(r => r.session === x.id))
+        || sessions.find(x => island.agents.needsYou(x))
+        || sessions.find(x => island.agents.isBusy(x)) || sessions[0] || null
+    }
+    readonly property var prof: island.profile(agentId)
+    readonly property string st: island.agents.displayState(session)
+    readonly property bool working: st === "thinking" || st === "tool" || st === "compacting"
+    readonly property bool waits: st === "waiting" || st === "input" || island.agents.pending.some(r => r.agent === agentId)
+    readonly property var look: island.agents.look(session)
+
+    Item {
+      id: halfLead
+      x: view.edge
+      width: view.lead; height: view.lead
+      anchors.verticalCenter: parent.verticalCenter
+      AgentSpinner {
+        agent: half.agentId
+        anchors.centerIn: parent
+        size: Math.round(view.lead * 0.82)
+        visible: half.look.icon === ""
+        running: half.working
+      }
+      Icon {
+        anchors.centerIn: parent
+        visible: half.look.icon !== ""
+        name: half.look.icon
+        size: Math.round(view.lead * 0.8)
+        color: half.look.tone === "green" ? Theme.green : half.look.tone === "red" ? Theme.red : Theme.secondary
+      }
+    }
+    Row {
+      anchors.right: parent.right
+      anchors.rightMargin: view.edge + 2
+      anchors.left: halfLead.right
+      anchors.leftMargin: 8
+      anchors.verticalCenter: parent.verticalCenter
+      layoutDirection: Qt.RightToLeft
+      spacing: 6
+      Rectangle {
+        visible: half.waits
+        width: 8; height: 8; radius: 4
+        color: half.prof.color
+        anchors.verticalCenter: parent.verticalCenter
+        SequentialAnimation on opacity {
+          running: parent.visible && !Theme.reduceMotion
+          loops: Animation.Infinite
+          NumberAnimation { to: 0.25; duration: 600; easing.type: Easing.InOutSine }
+          NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutSine }
+        }
+      }
+      ShimmerText {
+        anchors.verticalCenter: parent.verticalCenter
+        width: Math.min(implicitWidth, parent.width - (half.waits ? 14 : 0) - 20)
+        label: half.waits ? I18n.t("İzin gerekiyor")
+          : half.st === "tool" && half.session && half.session.tool ? half.session.tool + "…" : I18n.t(half.look.label)
+        running: half.working
+        font.pixelSize: 13
+        font.weight: Font.DemiBold
+        baseColor: half.look.tone === "green" ? Theme.green : half.look.tone === "red" ? Theme.red
+          : half.look.tone === "dim" ? Theme.secondary : half.prof.color
+        glowColor: half.prof.glow
+      }
+      // Whose half it is.
+      Icon {
+        anchors.verticalCenter: parent.verticalCenter
+        source: island.logoFor(half.agentId)
+        name: source ? "" : "sparkles"
+        size: 14
+        color: half.prof.color
+        opacity: 0.9
+      }
+    }
+    MouseArea {
+      anchors.fill: parent
+      cursorShape: Qt.PointingHandCursor
+      onClicked: island.showAgent(half.agentId)
+    }
+    Accessible.role: Accessible.Button
+    Accessible.name: prof.product + ", " + (waits ? I18n.t("İzin gerekiyor") : I18n.t(look.label))
+  }
+
+  Page {
+    anchors.fill: parent
+    shown: view.kind === "agent" && island.splitIsland
+    AgentHalf {
+      x: 0
+      width: (parent.width - island.splitGap) / 2
+      height: parent.height
+      agentId: island.splitOrder[0] || ""
+    }
+    AgentHalf {
+      x: parent.width - width
+      width: (parent.width - island.splitGap) / 2
+      height: parent.height
+      agentId: island.splitOrder[1] || ""
+    }
+  }
+
   // ---------------------------------------------------------------- agent
   Page {
     anchors.fill: parent
-    shown: view.kind === "agent"
+    shown: view.kind === "agent" && !island.splitIsland
 
     Item {
       id: agentLead

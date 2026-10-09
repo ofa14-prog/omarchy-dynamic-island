@@ -13,11 +13,15 @@ Page {
   readonly property var meta: ({
     home:   { icon: "home",   name: I18n.t("Ana") },
     music:  { icon: "music",  name: I18n.t("Müzik") },
-    agent:  { icon: island.agentLogo ? "" : "sparkles", name: island.agentName },
+    // The AI tab names the agent that is running: one → its mark and name;
+    // several → only their marks (two, then "…"); none → "AI".
+    agent:  { icon: "sparkles", name: island.runningAgents.length === 1 ? island.profile(island.runningAgents[0]).name : "AI" },
     timer:  { icon: "timer",  name: I18n.t("Sayaç") },
     shelf:  { icon: "shelf",  name: I18n.t("Raf") }
   })
-  readonly property var names: ({ home: I18n.t("Ana sayfa"), music: I18n.t("Müzik"), agent: island.agentProduct, timer: I18n.t("Zamanlayıcı"), shelf: I18n.t("Raf") })
+  readonly property var names: ({ home: I18n.t("Ana sayfa"), music: I18n.t("Müzik"),
+    agent: "AI" + (island.runningAgents.length ? ": " + island.runningAgents.map(id => island.profile(id).product).join(", ") : ""),
+    timer: I18n.t("Zamanlayıcı"), shelf: I18n.t("Raf") })
 
   readonly property int closeSize: 36
   readonly property real segment: (width - closeSize - 8) / Math.max(1, island.pages.length)
@@ -86,8 +90,35 @@ Page {
       readonly property real room: strip.segment - 14
       TextMetrics { id: wide; font.family: Theme.font; font.pixelSize: 13; font.weight: Font.DemiBold; text: tab.info.name }
       readonly property int fontSize: 25 + wide.advanceWidth <= room ? 13 : 12
-      readonly property bool showIcon: 25 + Math.min(wide.advanceWidth, label.implicitWidth) <= room
+      // The AI tab always keeps the running agent's mark; its name gives way.
+      readonly property bool showIcon: key === "agent" || 25 + Math.min(wide.advanceWidth, label.implicitWidth) <= room
+      // Several agents running: their marks side by side, no name.
+      readonly property bool marksOnly: key === "agent" && island.runningAgents.length > 1
+      Row {
+        visible: tab.marksOnly
+        anchors.centerIn: parent
+        spacing: 5
+        Repeater {
+          model: island.runningAgents.slice(0, 2)
+          delegate: Icon {
+            required property string modelData
+            anchors.verticalCenter: parent.verticalCenter
+            size: 18
+            source: island.logoFor(modelData)
+            name: source ? "" : "sparkles"
+            color: island.profile(modelData).color
+          }
+        }
+        Label {
+          visible: island.runningAgents.length > 2
+          anchors.verticalCenter: parent.verticalCenter
+          text: "…"
+          font.pixelSize: 13
+          color: tab.current ? Theme.fg : Theme.secondary
+        }
+      }
       Item {
+        visible: !tab.marksOnly
         anchors.centerIn: parent
         width: (tab.showIcon ? 25 : 0) + label.width
         height: 18
@@ -96,9 +127,10 @@ Page {
           anchors.left: parent.left
           anchors.verticalCenter: parent.verticalCenter
           size: 18
-          name: tab.info.icon
-          source: tab.key === "agent" ? island.agentLogo : ""
-          color: tab.current ? Theme.fg : Theme.secondary
+          readonly property string running: tab.key === "agent" && island.runningAgents.length === 1 ? island.runningAgents[0] : ""
+          source: running ? island.logoFor(running) : ""
+          name: source ? "" : tab.info.icon
+          color: running ? island.profile(running).color : tab.current ? Theme.fg : Theme.secondary
         }
         Label {
           id: label

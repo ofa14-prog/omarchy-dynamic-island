@@ -99,7 +99,15 @@ Item {
   readonly property string home: Quickshell.env("HOME") || ""
   property string defaultAgent: ""   // Omarchy's default agent id
   // Usage records written by Omarchy's agents panel (claude.json, codex.json…).
-  readonly property string usagePath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/" + (defaultAgent || "claude") + ".json"
+  // The agent whose usage is shown (the AI page's agent). Omarchy's agents
+  // panel writes usage records for Claude and Codex; Antigravity's comes
+  // from `agy -p /usage` (see below).
+  property string usageAgent: ""
+  readonly property string usageFor: usageAgent || defaultAgent || "claude"
+  readonly property string usagePath: usageFor === "antigravity" ? ""
+    : (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/" + usageFor + ".json"
+  property var fileUsage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+  property var agyUsage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
 
   // A busy turn with no event and no transcript write for this long is shown
   // as "quiet". Long enough for a slow model to think without tools.
@@ -115,7 +123,7 @@ Item {
   property var sessionList: []
   property var pending: []          // oldest first
   property var sockets: ({})        // request id -> Socket
-  property var usage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+  readonly property var usage: usageFor === "antigravity" ? agyUsage : fileUsage
 
   readonly property bool listening: server.active
   readonly property var currentRequest: pending.length > 0 ? pending[0] : null
@@ -870,8 +878,8 @@ Item {
   // is Omarchy's default agent, otherwise the same kind of terminal window
   // (in ~/Work when it exists, as Omarchy does).
   property string omarchyAgent: ""
-  function newSession() {
-    var id = defaultAgent || omarchyAgent
+  function newSession(agentId) {
+    var id = agentId || defaultAgent || omarchyAgent
     var p = Agents.get(id)
     if (!id || id === omarchyAgent || !p.launch) { Quickshell.execDetached(["omarchy-agent", "--pick"]); return }
     Quickshell.execDetached(["sh", "-c", "[ -d \"$HOME/Work\" ] && cd \"$HOME/Work\"; exec omarchy-launch-tui --app-id=org.omarchy.agent \"$@\"", "sh"].concat(p.launch))
@@ -941,6 +949,7 @@ Item {
   }
 
   function openUsage() {
+    if (usageFor === "antigravity") { agyUsageRefresh(); return }
     Quickshell.execDetached(["omarchy-shell", "-q", "omarchy.agents", "open"])
   }
 
@@ -950,8 +959,8 @@ Item {
     path: bridge.usagePath
     watchChanges: true
     printErrors: false
-    onPathChanged: bridge.usage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
-    onLoadFailed: bridge.usage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+    onPathChanged: bridge.fileUsage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+    onLoadFailed: bridge.fileUsage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
     onFileChanged: reload()
     onLoaded: {
       try {
@@ -967,8 +976,50 @@ Item {
             out.weekly = Number(l.percent); out.weeklyResets = l.resetsAt || ""
           }
         }
-        bridge.usage = out
+        bridge.fileUsage = out
       } catch (e) {}
     }
   }
+  // ---- Antigravity: `agy -p /usage` prints one tab-separated line per
+  // limit ("Gemini Models<TAB>Five Hour Limit Remaining<TAB>97%<TAB><reset>"),
+  // locally, without a model call or a new conversation. The group shown is
+  // the one of the model agy is set to (its settings.json), else the first.
+  // Read while Antigravity's usage is on screen, every 5 minutes, and after
+  // each of its turns.
+  function agyUsageRefresh() { if (!agyUsageProbe.running) agyUsageProbe.running = true }
+  Process {
+    id: agyUsageProbe
+    workingDirectory: bridge.home || "/tmp"
+    command: ["sh", "-c", "command -v agy >/dev/null || exit 0; " +
+      "m=$(sed -n 's/.*\"model\": *\"\\([^\"]*\\)\".*/\\1/p' \"$HOME/.gemini/antigravity-cli/settings.json\" 2>/dev/null | head -n 1); " +
+      "printf 'model\\t%s\\n' \"$m\"; timeout 30 agy -p /usage 2>/dev/null | head -c 8192"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var model = "", rows = []
+        text.split("\n").forEach(l => {
+          var c = l.split("\t")
+          if (c[0] === "model") model = (c[1] || "").toLowerCase()
+          else if (c.length >= 4 && /\d+%/.test(c[2])) rows.push({ group: c[0], label: c[1].toLowerCase(), left: parseFloat(c[2]) / 100, reset: c[3] })
+        })
+        if (!rows.length) return
+        var groups = rows.map(r => r.group).filter((g, i, a) => a.indexOf(g) === i)
+        var group = groups.find(g => model && model.indexOf(g.split(" ")[0].toLowerCase()) !== -1) || groups[0]
+        var out = { session: -1, weekly: -1, sessionResets: "", weeklyResets: "", group: group }
+        rows.filter(r => r.group === group).forEach(r => {
+          if (r.label.indexOf("five hour") !== -1 || r.label.indexOf("5") !== -1) { out.session = Math.max(0, 1 - r.left); out.sessionResets = r.reset }
+          else if (r.label.indexOf("week") !== -1) { out.weekly = Math.max(0, 1 - r.left); out.weeklyResets = r.reset }
+        })
+        bridge.agyUsage = out
+      }
+    }
+  }
+  Timer {
+    interval: 300000
+    repeat: true
+    running: bridge.usageFor === "antigravity"
+    triggeredOnStart: true
+    onTriggered: bridge.agyUsageRefresh()
+  }
+  onSessionFinished: session => { if (session && session.agent === "antigravity" && usageFor === "antigravity") agyUsageRefresh() }
+
 }

@@ -161,27 +161,57 @@ Item {
     onFileChanged: reload()
     onLoaded: island.omarchyAgent = text().trim()
   }
-  // Agents the island connects to that are installed here (in Agents.js
-  // order). With more than one, the agent page shows a bar to switch
-  // between them; the choice is saved as the `agent` setting.
-  property var presentAgents: []
-  Process {
-    id: agentProbe
-    running: true
-    command: ["sh", "-c", "for a; do id=${a%%:*}; bin=${a#*:}; command -v \"$bin\" >/dev/null 2>&1 && echo \"$id\"; done", "sh"]
-      .concat(Agents.connectable.map(id => id + ":" + Agents.get(id).bin))
-    stdout: StdioCollector {
-      onStreamFinished: island.presentAgents = text.split("\n").filter(l => l !== "")
+  // ---- agents that are running right now (a live session), most urgent
+  // first: waiting on you, then working, then idle. They drive the AI tab's
+  // label, the agent bar on its page and the split compact island.
+  readonly property var runningAgents: {
+    void agents.revision
+    var rank = id => {
+      var mine = agents.sessionList.filter(x => x.agent === id)
+      if (agents.pending.some(r => r.agent === id) || mine.some(x => agents.needsYou(x))) return 0
+      if (mine.some(x => agents.isBusy(x))) return 1
+      return 2
     }
+    var ids = []
+    agents.sessionList.forEach(x => { if (x.agent && ids.indexOf(x.agent) === -1) ids.push(x.agent) })
+    return ids.sort((a, b) => rank(a) - rank(b))
   }
-  Timer { interval: 60000; repeat: true; running: true; onTriggered: if (!agentProbe.running) agentProbe.running = true }
-  // Agents for the bar: the installed ones, plus the current one if it is not.
-  readonly property var barAgents: {
-    var list = presentAgents.slice()
-    if (agentId && Agents.connectable.indexOf(agentId) !== -1 && list.indexOf(agentId) === -1) list.unshift(agentId)
-    return list
+  // Agents with a turn in progress (or waiting on you): two or more split
+  // the compact island in half, one agent per side.
+  readonly property var workingAgents: {
+    void agents.revision
+    return runningAgents.filter(id => agents.pending.some(r => r.agent === id)
+      || agents.sessionList.some(x => x.agent === id && (agents.isBusy(x) || agents.needsYou(x))))
   }
-  function setAgent(id) { if (id && id !== agentId) setConfig("agent", id) }
+  readonly property bool splitIsland: workingAgents.length >= 2 && primary === "agent"
+  // Which agent sits on which half. An agent keeps its side for as long as
+  // it works; a newcomer takes the free side. Never more than two.
+  property var splitOrder: []
+  onWorkingAgentsChanged: {
+    var keep = splitOrder.filter(id => workingAgents.indexOf(id) !== -1)
+    workingAgents.forEach(id => { if (keep.indexOf(id) === -1) keep.push(id) })
+    keep = keep.slice(0, 2)
+    if (JSON.stringify(keep) !== JSON.stringify(splitOrder)) splitOrder = keep
+  }
+  // The gap between the two halves springs open and closed; while it is
+  // open the island is drawn as two pills (CompactView's halves) instead of
+  // one shape. Only in compact: opening the island always starts whole.
+  property real splitGap: splitIsland && mode === "compact" && introDone ? 8 : 0
+  Behavior on splitGap {
+    enabled: !Theme.reduceMotion
+    SpringAnimation { spring: 4; damping: 0.38; epsilon: 0.05 }
+  }
+  readonly property bool halvesOn: mode === "compact" && (splitIsland || splitGap > 0.05)
+  // The agent the AI page shows: the one picked in its bar while it still
+  // runs, else the most urgent running one, else the island's agent.
+  property string viewAgent: ""
+  onModeChanged: if (mode === "compact") viewAgent = ""
+  readonly property string pageAgent: viewAgent && runningAgents.indexOf(viewAgent) !== -1 ? viewAgent
+    : runningAgents.length ? runningAgents[0] : agentId
+  function showAgent(id) {
+    viewAgent = id || ""
+    openPage(agents.pending.some(r => r.agent === id) ? "permission" : "agent", "pointer")
+  }
 
   // The agent Omarchy launches by default shapes the agent page: its name,
   // mark, colors and spinner. Sessions of other agents keep their own look.
@@ -310,6 +340,7 @@ Item {
     pluginDir: island.pluginDir
     defaultAgent: island.agentId
     omarchyAgent: island.omarchyAgent
+    usageAgent: island.pageAgent
     quietAfterMs: Math.max(20, Number(island.cfg("agentQuietSeconds")) || 180) * 1000
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {
@@ -767,6 +798,7 @@ Item {
 
   readonly property int idleW: cfg("idleClock") ? Math.max(130, Math.ceil(clockMetrics.advanceWidth) + 44) : 130
   readonly property int liveW: {
+    if (splitIsland) return 352
     if (primary === "agent") return 300
     if (primary === "timer") return 236
     if (primary === "music") return 268
@@ -867,6 +899,8 @@ Item {
     function status(): string {
       return JSON.stringify({ agent: island.agentId, mode: island.mode, page: island.page, primary: island.primary, secondary: island.secondary, tertiary: island.tertiary,
         pending: agents.pending.length, sessions: agents.sessionList.length, listening: agents.listening,
+        running: island.runningAgents, working: island.workingAgents, split: island.splitIsland, pageAgent: island.pageAgent,
+        usage: island.agents.usage,
         ambient: island.ambientOn, audio: island.audio.active ? Math.round(island.audio.level * 100) / 100 : -1 })
     }
   }
@@ -1036,8 +1070,8 @@ Item {
           width: island.targetW
           height: island.targetH
           radius: island.targetR
-          color: Theme.bg
-          border.width: 1
+          color: island.halvesOn ? "transparent" : Theme.bg
+          border.width: island.halvesOn ? 0 : 1
           border.color: island.mode === "compact" ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(1, 1, 1, 0.10)
           antialiasing: true
 
@@ -1177,6 +1211,27 @@ Item {
               maskEnabled: true
               maskSource: backdropMask
               opacity: 0.7
+            }
+          }
+
+          // Two agents at work: the pill as two halves with a gap between.
+          // At gap 0 they are exactly the whole pill, so the split and the
+          // merge are seamless.
+          Repeater {
+            model: island.halvesOn ? [0, 1] : []
+            delegate: Rectangle {
+              required property int modelData
+              readonly property real inner: Math.min(height / 2, island.splitGap * 2.2)
+              width: (shape.width - island.splitGap) / 2
+              height: shape.height
+              x: modelData === 0 ? 0 : shape.width - width
+              color: Theme.bg
+              border.width: 1
+              border.color: Qt.rgba(1, 1, 1, 0.06)
+              topLeftRadius: modelData === 0 ? height / 2 : inner
+              bottomLeftRadius: modelData === 0 ? height / 2 : inner
+              topRightRadius: modelData === 1 ? height / 2 : inner
+              bottomRightRadius: modelData === 1 ? height / 2 : inner
             }
           }
 
