@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.1
+
+- Split island: the halves act on their own. Hovering a half opens that half's agent page; the
+  half under the pointer lights up in its agent's color (no whole-island grow or lean).
+- Answering Antigravity's permission on the island no longer focuses its terminal: the key goes
+  to agy's window through Hyprland's `send_shortcut` (tmux stays in the background; the old
+  focus-and-type path is only a fallback for older Hyprland). Claude, Codex and OpenCode never
+  moved focus.
+
 ## 1.12.0
 
 - Closed island: Antigravity's spinner stayed off-center and spilled past the island's edge

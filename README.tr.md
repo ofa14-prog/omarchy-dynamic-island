@@ -50,8 +50,9 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   kapanınca yine ona döner. Kapalı çubuktaki ya da bir ajan ikonundaki nokta, başka bir ajanın
   çalıştığını (kendi renginde) ya da sizi beklediğini (turuncu, yanıp sönen) gösterir.
 - **İki ajan aynı anda**: iki farklı ajan çalışırken kapalı ada ortadan ikiye bölünür, her yarıda
-  bir ajan (spinner, durum, logo). Her ajan çalıştığı sürece kendi tarafında kalır; bir yarıya
-  tıklamak o ajanı açar. Biri boşa düşünce iki yarı yeniden tek adada birleşir.
+  bir ajan (spinner, durum, logo). Her ajan çalıştığı sürece kendi tarafında kalır. Yarılar
+  birbirinden bağımsızdır: imlecin üstündeki yarı kendi ajanının renginde yanar, üzerine gelmek
+  ya da tıklamak o ajanın sayfasını açar. Biri boşa düşünce iki yarı yeniden tek adada birleşir.
 - **Kullanım**: AI sayfası ve Ana sayfa, ekrandaki ajanın 5 saatlik ve haftalık limitlerini gösterir:
   Claude ve Codex Omarchy'nin ajan panelinden, Antigravity `agy -p /usage` ile (yerel, model
   çağrısı yok; agy'nin seçili modelinin kota grubu).
@@ -100,7 +101,9 @@ Antigravity CLI (`agy`) her araç çağrısını hook'lara bildirir ama izin ist
 hook'un "izin ver" yanıtı da o istemi atlatmaz. Bu yüzden ada agy'nin kendi günlüğünü izler
 (`Surfacing tool confirmation … at step N`, hook'un adım numarasıyla eşleşir) ve adadan yanıt
 verdiğinizde agy'nin terminalinde istemin tuşuna basar: `1` çalıştır, `2` bu konuşmada hep izin
-ver, `Esc` iptal. agy tmux'taysa arka planda, değilse işlemle birebir eşleşen kendi penceresinde.
+ver, `Esc` iptal. agy tmux'taysa arka planda, değilse Hyprland'in `send_shortcut`'ı ile doğrudan
+agy'nin kendi penceresine (işlemle birebir eşleşen); odak hiç değişmez. Adadan izin vermek hiçbir
+ajanda sizi terminale götürmez.
 Terminalde yanıtlarsanız adadaki kart kendiliğinden kapanır.
 
 ### Etkileşim

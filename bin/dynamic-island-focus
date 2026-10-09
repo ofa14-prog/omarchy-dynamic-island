@@ -3,8 +3,10 @@
 # Usage: dynamic-island-focus [--exact] <pid> [<pid>...]   (the hook's ancestor chain)
 #   --exact  only the session's own window: no fallback (used before typing,
 #            so text can never land in some other window)
+#   --find   like --exact, but only print the window address: no focus
 
-exact=0
+exact=0 find_only=0
+[[ $1 == --find ]] && { exact=1; find_only=1; shift; }
 [[ $1 == --exact ]] && { exact=1; shift; }
 
 clients=$(hyprctl clients -j 2>/dev/null) || exit 1
@@ -24,6 +26,7 @@ fi
 
 [[ -n $address ]] || exit 1
 [[ $exact == 1 ]] && echo "$address"
+[[ $find_only == 1 ]] && exit 0
 
 hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null 2>&1 ||
   hyprctl dispatch focuswindow "address:$address" >/dev/null

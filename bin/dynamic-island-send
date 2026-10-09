@@ -47,6 +47,15 @@ for sock in "${TMUX_TMPDIR:-/tmp}/tmux-$(id -u)"/*; do
   done < <(tmux -S "$sock" list-panes -a -F '#{pane_pid} #{pane_id}' 2>/dev/null)
 done
 
+# ---- a key for the prompt: sent straight to the session's own window with
+# Hyprland's send_shortcut, which does not focus it, so answering from the
+# island never pulls you away from what you are doing.
+if [[ -n $key ]]; then
+  win=$("$(dirname "$(realpath "$0")")/dynamic-island-focus" --find "$@") || exit 1
+  hyprctl dispatch "hl.dsp.send_shortcut({ mods = \"\", key = \"$key\", window = \"address:$win\" })" 2>/dev/null | grep -qx ok && exit 0
+  # Older Hyprland: fall back to focusing the window and typing.
+fi
+
 # ---- terminal window: focus it, then type
 command -v wtype >/dev/null || exit 2
 # Only the session's own window, never a guess: typing into the wrong

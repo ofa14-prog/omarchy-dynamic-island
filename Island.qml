@@ -793,8 +793,12 @@ Item {
 
   readonly property int expandedW: cfg("expandedWidth")
   readonly property bool hovered: hover.hovered
-  readonly property int hoverGrowW: mode === "compact" && hovered ? 12 : 0
-  readonly property int hoverGrowH: mode === "compact" && hovered ? 2 : 0
+  // Split in two, each half reacts on its own: no whole-island grow or lean;
+  // the half under the pointer lights up and hovering opens its agent.
+  readonly property int hoveredHalf: halvesOn && hovered ? (hover.point.position.x < stage.width / 2 ? 0 : 1) : -1
+  readonly property string hoveredAgent: hoveredHalf >= 0 ? (splitOrder[hoveredHalf] || "") : ""
+  readonly property int hoverGrowW: mode === "compact" && hovered && !halvesOn ? 12 : 0
+  readonly property int hoverGrowH: mode === "compact" && hovered && !halvesOn ? 2 : 0
 
   readonly property int idleW: cfg("idleClock") ? Math.max(130, Math.ceil(clockMetrics.advanceWidth) + 44) : 130
   readonly property int liveW: {
@@ -839,7 +843,12 @@ Item {
   Timer {
     id: hoverTimer
     interval: island.cfg("hoverDelay")
-    onTriggered: if (hover.hovered && island.mode !== "expanded") island.openPage(island.defaultPage(), "pointer")
+    onTriggered: {
+      if (!hover.hovered || island.mode === "expanded") return
+      // Over one half of a split island: that half's agent.
+      if (island.hoveredAgent) island.showAgent(island.hoveredAgent)
+      else island.openPage(island.defaultPage(), "pointer")
+    }
   }
 
   Timer {
@@ -995,7 +1004,7 @@ Item {
         Binding {
           target: stage
           property: "leanX"
-          value: island.mode === "compact" && hover.hovered
+          value: island.mode === "compact" && hover.hovered && !island.halvesOn
             ? Math.max(-1, Math.min(1, (hover.point.position.x - stage.width / 2) / (stage.width / 2))) * 3.5
             : 0
         }
@@ -1225,9 +1234,12 @@ Item {
               width: (shape.width - island.splitGap) / 2
               height: shape.height
               x: modelData === 0 ? 0 : shape.width - width
+              readonly property bool lit: island.hoveredHalf === modelData
+              readonly property color agentTint: island.profile(island.splitOrder[modelData] || "").color
               color: Theme.bg
-              border.width: 1
-              border.color: Qt.rgba(1, 1, 1, 0.06)
+              border.width: lit ? 1.5 : 1
+              border.color: lit ? Qt.rgba(agentTint.r, agentTint.g, agentTint.b, 0.6) : Qt.rgba(1, 1, 1, 0.06)
+              Behavior on border.color { ColorAnimation { duration: Theme.ms(160) } }
               topLeftRadius: modelData === 0 ? height / 2 : inner
               bottomLeftRadius: modelData === 0 ? height / 2 : inner
               topRightRadius: modelData === 1 ? height / 2 : inner

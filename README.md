@@ -51,8 +51,9 @@ right from the island.
   goes back to that after the island closes. A dot on the closed bar, or on an agent's icon,
   means another agent is busy (its color) or waiting for you (orange, pulsing).
 - **Two agents at once**: while two different agents are working, the closed island splits into two
-  halves, one per agent (spinner, status, mark); each keeps its side while it works, and clicking
-  a half opens that agent. When one of them goes idle the halves join back into one island.
+  halves, one per agent (spinner, status, mark); each keeps its side while it works. The halves
+  act on their own: the one under the pointer lights up in its agent's color, and hovering or
+  clicking it opens that agent's page. When one of them goes idle the halves join back into one island.
 - **Usage**: the AI page and Home show the 5-hour and weekly limits of the agent on screen: Claude
   and Codex from Omarchy's agents panel, Antigravity from `agy -p /usage` (local, no model call;
   the quota group of the model agy is set to).
@@ -104,8 +105,9 @@ Antigravity CLI (`agy`) tells hooks about every tool call but not about its perm
 hook's "allow" does not skip that prompt. So the island watches agy's own log (`Surfacing tool
 confirmation … at step N`, matched to the hook's step) and, when you answer on the island, presses
 the prompt's key in agy's terminal: `1` run, `2` allow for this conversation, `Esc` cancel. It uses
-tmux in the background when agy runs there, otherwise agy's own window, matched exactly by
-process. Answering in the terminal closes the island's card on its own.
+tmux in the background when agy runs there, otherwise Hyprland's `send_shortcut` straight to agy's
+own window (matched exactly by process), which never moves focus. Answering a permission on the
+island never takes you to the terminal, for any agent. Answering in the terminal closes the island's card on its own.
 
 ### Interaction
 
