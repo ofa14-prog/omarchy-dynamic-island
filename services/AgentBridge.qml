@@ -104,10 +104,19 @@ Item {
   // from `agy -p /usage` (see below).
   property string usageAgent: ""
   readonly property string usageFor: usageAgent || defaultAgent || "claude"
-  readonly property string usagePath: usageFor === "antigravity" ? ""
-    : (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/" + usageFor + ".json"
-  property var fileUsage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
-  property var agyUsage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+  // Agents whose usage is wanted at once (Home shows every running agent).
+  property var usageAgents: []
+  readonly property var noUsage: ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
+  readonly property string usageDir: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage/"
+  // agent id → { session, weekly, sessionResets, weeklyResets } (0..1 used)
+  property var usageByAgent: ({})
+  function usageOf(id) { return usageByAgent[id] || noUsage }
+  function setUsage(id, u) {
+    var next = {}
+    for (var k in usageByAgent) next[k] = usageByAgent[k]
+    next[id] = u
+    usageByAgent = next
+  }
 
   // A busy turn with no event and no transcript write for this long is shown
   // as "quiet". Long enough for a slow model to think without tools.
@@ -123,7 +132,7 @@ Item {
   property var sessionList: []
   property var pending: []          // oldest first
   property var sockets: ({})        // request id -> Socket
-  readonly property var usage: usageFor === "antigravity" ? agyUsage : fileUsage
+  readonly property var usage: usageOf(usageFor)
 
   readonly property bool listening: server.active
   readonly property var currentRequest: pending.length > 0 ? pending[0] : null
@@ -955,29 +964,34 @@ Item {
 
   // ---------------------------------------------------------------- usage
 
-  FileView {
-    path: bridge.usagePath
-    watchChanges: true
-    printErrors: false
-    onPathChanged: bridge.fileUsage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
-    onLoadFailed: bridge.fileUsage = ({ session: -1, weekly: -1, sessionResets: "", weeklyResets: "" })
-    onFileChanged: reload()
-    onLoaded: {
-      try {
-        var rec = JSON.parse(text())
-        var out = { session: -1, weekly: -1, sessionResets: "", weeklyResets: "" }
-        var limits = rec.limits || []
-        for (var i = 0; i < limits.length; i++) {
-          var l = limits[i]
-          var label = String(l.label || "").toLowerCase()
-          if (label.indexOf("session") !== -1 || label.indexOf("5-hour") !== -1) {
-            out.session = Number(l.percent); out.sessionResets = l.resetsAt || ""
-          } else if (label.indexOf("week") !== -1) {
-            out.weekly = Number(l.percent); out.weeklyResets = l.resetsAt || ""
+  // Omarchy's agents panel keeps a usage record per agent it knows
+  // (claude.json, codex.json); each is watched.
+  Instantiator {
+    model: ["claude", "codex"]
+    delegate: FileView {
+      required property string modelData
+      path: bridge.usageDir + modelData + ".json"
+      watchChanges: true
+      printErrors: false
+      onFileChanged: reload()
+      onLoadFailed: bridge.setUsage(modelData, bridge.noUsage)
+      onLoaded: {
+        try {
+          var rec = JSON.parse(text())
+          var out = { session: -1, weekly: -1, sessionResets: "", weeklyResets: "" }
+          var limits = rec.limits || []
+          for (var i = 0; i < limits.length; i++) {
+            var l = limits[i]
+            var label = String(l.label || "").toLowerCase()
+            if (label.indexOf("session") !== -1 || label.indexOf("5-hour") !== -1) {
+              out.session = Number(l.percent); out.sessionResets = l.resetsAt || ""
+            } else if (label.indexOf("week") !== -1) {
+              out.weekly = Number(l.percent); out.weeklyResets = l.resetsAt || ""
+            }
           }
-        }
-        bridge.fileUsage = out
-      } catch (e) {}
+          bridge.setUsage(modelData, out)
+        } catch (e) {}
+      }
     }
   }
   // ---- Antigravity: `agy -p /usage` prints one tab-separated line per
@@ -1009,17 +1023,17 @@ Item {
           if (r.label.indexOf("five hour") !== -1 || r.label.indexOf("5") !== -1) { out.session = Math.max(0, 1 - r.left); out.sessionResets = r.reset }
           else if (r.label.indexOf("week") !== -1) { out.weekly = Math.max(0, 1 - r.left); out.weeklyResets = r.reset }
         })
-        bridge.agyUsage = out
+        bridge.setUsage("antigravity", out)
       }
     }
   }
   Timer {
     interval: 300000
     repeat: true
-    running: bridge.usageFor === "antigravity"
+    running: bridge.usageFor === "antigravity" || bridge.usageAgents.indexOf("antigravity") !== -1
     triggeredOnStart: true
     onTriggered: bridge.agyUsageRefresh()
   }
-  onSessionFinished: session => { if (session && session.agent === "antigravity" && usageFor === "antigravity") agyUsageRefresh() }
+  onSessionFinished: session => { if (session && session.agent === "antigravity") agyUsageRefresh() }
 
 }

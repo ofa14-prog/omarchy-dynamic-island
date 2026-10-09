@@ -147,10 +147,21 @@ Item {
     copier.stdinEnabled = true
     copier.running = true
   }
+  // One file onto the clipboard as a file (text/uri-list), so pasting in
+  // Files, a browser upload or a chat app pastes the file itself.
+  function copyFile(path) {
+    if (copier.running) return false
+    copier.text = uriList([{ path: path }]) + "\r\n"
+    copier.command = ["wl-copy", "--type", "text/uri-list"]
+    copier.stdinEnabled = true
+    copier.running = true
+    return true
+  }
   Process {
     id: copier
     property string text: ""
     command: ["wl-copy"]
+    onExited: command = ["wl-copy"]
     onStarted: { write(text); text = ""; stdinEnabled = false }
   }
   function uriList(list) {

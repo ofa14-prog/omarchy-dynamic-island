@@ -4,6 +4,8 @@
 .pragma library
 
 var en = {
+  "ya da Ctrl+V ile kopyaladığını ekle": "or press Ctrl+V to add what you copied",
+  "Yapıştır": "Paste",
   "Tıkla: ajanları göster": "Click: show the agents",
   "Bar'ın ortası dolu": "The bar's center is taken",
   "Öğeler sağa taşınır, geri alınabilir": "Its items move right; undoable",
@@ -174,6 +176,8 @@ var en = {
 }
 
 var es = {
+  "ya da Ctrl+V ile kopyaladığını ekle": "o pulsa Ctrl+V para añadir lo copiado",
+  "Yapıştır": "Pegar",
   "Tıkla: ajanları göster": "Clic: mostrar los agentes",
   "Bar'ın ortası dolu": "El centro de la barra está ocupado",
   "Öğeler sağa taşınır, geri alınabilir": "Sus elementos van a la derecha",
@@ -344,6 +348,8 @@ var es = {
 }
 
 var ru = {
+  "ya da Ctrl+V ile kopyaladığını ekle": "или нажми Ctrl+V, чтобы добавить скопированное",
+  "Yapıştır": "Вставить",
   "Tıkla: ajanları göster": "Клик: показать агентов",
   "Bar'ın ortası dolu": "Центр панели занят",
   "Öğeler sağa taşınır, geri alınabilir": "Элементы уйдут вправо, обратимо",

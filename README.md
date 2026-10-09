@@ -18,7 +18,7 @@ right from the island.
 
 | Home | Music |
 |---|---|
-| <img src="docs/screenshots/home.png" alt="Home page: clock, usage and battery rings, shortcuts, quick timers"> | <img src="docs/screenshots/music.png" alt="Music page with artwork-colored backdrop and player picker"> |
+| <img src="docs/screenshots/home.png" alt="Home page: clock, battery, agent usage rings, shortcuts"> | <img src="docs/screenshots/music.png" alt="Music page with artwork-colored backdrop and player picker"> |
 | **Agent**: sessions, live feed, message box | **Permission**: allow / always / deny from the island |
 | <img src="docs/screenshots/agent.png" alt="Agent page with two Claude Code sessions and the live feed"> | <img src="docs/screenshots/permission.png" alt="Permission request for writing notes.md"> |
 | **Timer** | **Shelf** |
@@ -34,8 +34,10 @@ right from the island.
 | **Expanded** | Home · Music · Claude · Timer · Shelf, as a segmented control |
 | **Alerts** | A Claude permission request or a finished timer opens the island and holds it open |
 
-- **Home**: time and date, Claude usage rings (5-hour / weekly), battery, shortcuts to your
-  *default* agent, editor, browser, file manager and terminal (with their own app icons), quick timers.
+- **Home**: time, date and battery; a usage card per running agent (its mark and two rings, 5-hour
+  and weekly, like Claude Code's; the island's agent when none runs; click one to open it); and a
+  grid of shortcuts to your *default* agent, editor, browser, file manager and terminal (with their
+  own app icons).
 - **Music**: any MPRIS player; artwork, a draggable scrubber, transport. The waveform takes the artwork's color.
   The music activity shows only while something plays and leaves the moment it is paused or closed.
 - **Refresh**: the round arrow on Home restarts the whole Omarchy shell (bar and island reload);
@@ -81,8 +83,10 @@ right from the island.
   the sound; without it, it holds still. Turn off with `"ambient": false` (or just the movement
   with `"ambientAudio": false`).
 - **Shelf**: drop files on the island to park them, drag them back out into any app later. While
-  it holds anything, a shelf bubble shows how many items and how full it is; click the bubble to
-  put what you copied on the shelf (files from Files, or a copied image or text, saved as a file).
+  it holds anything, a shelf bubble shows how many items and how full it is. With the shelf open,
+  **Ctrl+V** puts what you copied on it (files from Files, or a copied image or text, saved as a
+  file). Click a file to copy it to the clipboard (paste it as a file anywhere), double-click to
+  open it, right-click to show it in Files.
 - Claude Code's own spinner (`· ✢ * ✶ ✻ ✽`) and status shimmer, captured from a live `claude`
   session; other agents use their CLI's braille spinner.
 - Sharp at fractional scaling: text is hinted and icons are rasterized at the screen's real pixel
@@ -113,14 +117,14 @@ island never takes you to the terminal, for any agent. Answering in the terminal
 
 | Gesture | Result |
 |---|---|
-| Hover | Grows slightly and leans toward the pointer; opens after 380 ms |
+| Hover | Grows slightly and leans toward the pointer (split in two: the half under the pointer lights up). Set `"hoverExpand": true` to also open on hover |
 | Click | Opens (the shape sinks while pressed) |
 | Right-click | Home page |
 | Middle-click on music | Play / pause |
 | Scroll on the compact island | Volume |
 | Drag a file onto it | Opens the shelf |
 | Pointer leaves | Closes after 650 ms (not while an alert is waiting) |
-| Bubble: click | Open that activity (shelf bubble: add the clipboard to the shelf) |
+| Bubble: click | Open that activity |
 | Bubble: double-click (or right-click) | Swap it with the center: it moves into the island, the center takes its place |
 | Bubble: middle-click | Play / pause music, pause / resume the timer |
 
@@ -203,7 +207,7 @@ Optional `~/.config/omarchy/dynamic-island.json`; changes apply live.
 |---|---|---|
 | `agent` | `""` | Agent the island is styled after; empty follows `omarchy default agent` |
 | `language` | `"en"` | `"en"`, `"es"`, `"ru"`, `"tr"`, or `"auto"` (the system language if the island has it, else English). Also set from the flag on the Home page |
-| `hoverExpand` / `hoverDelay` | `true` / `380` | Open on hover |
+| `hoverExpand` / `hoverDelay` | `false` / `380` | Also open on hover (otherwise click opens) |
 | `collapseDelay` | `650` | Close after the pointer leaves (ms) |
 | `reduceMotion` | `false` | Short fades instead of springs and shakes |
 | `idleClock` / `clockFormat` / `locale` | `true` / `"ddd d MMM  HH:mm"` / `""` | Empty `locale` follows the language |

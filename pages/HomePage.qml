@@ -1,21 +1,26 @@
 import QtQuick
 import "../components"
 
-// Home: time and status at a glance, launch shortcuts, quick timers.
+// Home: time and battery at a glance, the usage of every agent that is
+// running (rings, like Claude Code's), and the launch shortcuts as a grid.
 Page {
   id: page
 
   property var island
   implicitHeight: col.implicitHeight + 8
 
+  // Agents whose usage cards are shown: the running ones, or the island's.
+  readonly property var usageAgents: island.runningAgents.length ? island.runningAgents : [island.agentId]
+
   component Gauge: Column {
     id: gauge
     property real value: 0
     property string caption: ""
     property color tone: island.agentColor
+    property int ring: 40
     spacing: 4
     Item {
-      width: 40; height: 40
+      width: gauge.ring; height: gauge.ring
       anchors.horizontalCenter: parent.horizontalCenter
       ProgressRing {
         anchors.fill: parent
@@ -26,7 +31,7 @@ Page {
       Label {
         anchors.centerIn: parent
         text: Math.round(gauge.value * 100)
-        font.pixelSize: 12
+        font.pixelSize: gauge.ring >= 40 ? 12 : 11
         strong: true
         tabular: true
         horizontalAlignment: Text.AlignHCenter
@@ -46,7 +51,7 @@ Page {
   Column {
     id: col
     width: parent.width
-    spacing: 16
+    spacing: 18
 
     // ---- glance row
     Item {
@@ -75,18 +80,6 @@ Page {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         spacing: 16
-        Gauge {
-          visible: island.agents.usage.session >= 0
-          value: island.agents.usage.session
-          caption: I18n.t("5 sa")
-          tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : island.agentColor
-        }
-        Gauge {
-          visible: island.agents.usage.weekly >= 0
-          value: island.agents.usage.weekly
-          caption: I18n.t("Hafta")
-          tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : island.agentColor
-        }
         Gauge {
           visible: island.hasBattery
           value: island.batteryPercent / 100
@@ -234,70 +227,123 @@ Page {
       }
     }
 
-    // ---- shortcuts
+    // ---- usage: one card per running agent (or the island's agent when
+    // none runs), its mark and two rings: the 5-hour and the weekly limit.
+    Flow {
+      id: usageFlow
+      width: parent.width
+      spacing: 10
+      readonly property var shown: page.usageAgents.filter(id => {
+        var u = island.agents.usageOf(id)
+        return u.session >= 0 || u.weekly >= 0
+      })
+      visible: shown.length > 0
+      Repeater {
+        model: usageFlow.shown
+        delegate: Rectangle {
+          id: card
+          required property string modelData
+          readonly property var u: island.agents.usageOf(modelData)
+          readonly property color tint: island.profile(modelData).color
+          width: cardRow.implicitWidth + 28
+          height: 74
+          radius: 20
+          color: Theme.fill
+          Row {
+            id: cardRow
+            anchors.centerIn: parent
+            spacing: 14
+            Icon {
+              anchors.verticalCenter: parent.verticalCenter
+              source: island.logoFor(card.modelData)
+              name: source ? "" : "sparkles"
+              color: card.tint
+              size: 22
+            }
+            Gauge {
+              visible: card.u.session >= 0
+              ring: 36
+              value: Math.max(0, card.u.session)
+              caption: I18n.t("5 sa")
+              tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : card.tint
+            }
+            Gauge {
+              visible: card.u.weekly >= 0
+              ring: 36
+              value: Math.max(0, card.u.weekly)
+              caption: I18n.t("Hafta")
+              tone: value >= 0.9 ? Theme.red : value >= 0.7 ? Theme.orange : card.tint
+            }
+          }
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: island.showAgent(card.modelData)
+          }
+          Accessible.role: Accessible.Button
+          Accessible.name: island.profile(modelData).product + ", " + I18n.t("5 sa") + " " + Math.round(Math.max(0, u.session) * 100) + "%, "
+            + I18n.t("Hafta") + " " + Math.round(Math.max(0, u.weekly) * 100) + "%"
+        }
+      }
+    }
+
+    // ---- shortcuts: a grid of tiles (icon and name side by side), three
+    // per row, so marks have room and the page stays short.
     Grid {
       id: grid
       width: parent.width
-      columns: Math.min(6, island.shortcuts.length)
-      readonly property real cell: width / Math.max(1, columns)
+      columns: 3
+      columnSpacing: 8
+      rowSpacing: 8
+      readonly property real cell: (width - columnSpacing * (columns - 1)) / columns
 
       Repeater {
         model: island.shortcuts
-        delegate: Item {
+        delegate: Rectangle {
+          id: tile
           required property var modelData
           width: grid.cell
-          height: 76
-          IslandButton {
-            id: sc
-            anchors.horizontalCenter: parent.horizontalCenter
-            size: 50
-            iconSize: modelData.image ? 28 : 24
-            icon: modelData.image ? "" : (modelData.icon || "arrow-up-right")
-            iconSource: modelData.image || ""
-            accessibleName: modelData.label || I18n.t("Kısayol")
-            onClicked: island.runShortcut(modelData)
+          height: 46
+          radius: 16
+          color: tileMouse.pressed ? Theme.fillPressed : tileMouse.containsMouse ? Theme.fillHover : Theme.fill
+          scale: tileMouse.pressed ? 0.96 : 1
+          Behavior on color { ColorAnimation { duration: Theme.ms(120) } }
+          Behavior on scale {
+            enabled: !Theme.reduceMotion
+            SpringAnimation { spring: Theme.snapSpring; damping: Theme.snapDamping; epsilon: 0.002 }
+          }
+          Icon {
+            id: tileIcon
+            x: 14
+            anchors.verticalCenter: parent.verticalCenter
+            size: 22
+            name: tile.modelData.image ? "" : (tile.modelData.icon || "arrow-up-right")
+            source: tile.modelData.image || ""
+            color: Theme.fg
           }
           Label {
-            anchors.top: sc.bottom
-            anchors.topMargin: 7
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: parent.width - 4
-            horizontalAlignment: Text.AlignHCenter
-            text: modelData.label || ""
-            font.pixelSize: 12
-            color: Theme.secondary
+            anchors.left: tileIcon.right
+            anchors.leftMargin: 10
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: tile.modelData.label || ""
+            font.pixelSize: 13
           }
+          MouseArea {
+            id: tileMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: island.runShortcut(tile.modelData)
+          }
+          Accessible.role: Accessible.Button
+          Accessible.name: modelData.label || I18n.t("Kısayol")
+          Accessible.onPressAction: island.runShortcut(modelData)
         }
       }
     }
 
-    // ---- quick timers
-    Row {
-      spacing: 8
-      anchors.horizontalCenter: parent.horizontalCenter
-      Icon {
-        name: "timer"
-        size: 20
-        color: Theme.orange
-        anchors.verticalCenter: parent.verticalCenter
-      }
-      Repeater {
-        model: [1, 5, 10, 25, 50]
-        delegate: IslandButton {
-          required property int modelData
-          size: 32
-          fontSize: 13
-          text: modelData + I18n.t(" dk")
-          tint: Theme.orange
-          fillColor: Qt.rgba(1, 0.62, 0.04, 0.16)
-          accessibleName: modelData + I18n.t(" dakikalık zamanlayıcı başlat")
-          onClicked: {
-            island.timer.startCountdown(modelData * 60, modelData === 25 ? "Pomodoro" : "")
-            island.setPage("timer")
-          }
-        }
-      }
-    }
   }
 
   // ---- language list

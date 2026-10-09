@@ -49,18 +49,10 @@ Page {
       Label {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: !island.dragHover
-        text: I18n.t("ya da tıkla: kopyaladığını rafa ekle")
+        text: I18n.t("ya da Ctrl+V ile kopyaladığını ekle")
         font.pixelSize: 12
         color: Theme.tertiary
       }
-    }
-    MouseArea {
-      anchors.fill: parent
-      enabled: shelf.count === 0 && !island.dragHover
-      cursorShape: Qt.PointingHandCursor
-      onClicked: shelf.addFromClipboard()
-      Accessible.role: Accessible.Button
-      Accessible.name: I18n.t("Panodakini rafa ekle")
     }
   }
 
@@ -163,9 +155,38 @@ Page {
           cursorShape: Qt.PointingHandCursor
           acceptedButtons: Qt.LeftButton | Qt.RightButton
           drag.target: dragProxy
-          onClicked: mouse => mouse.button === Qt.RightButton ? shelf.reveal(tile.modelData.path) : shelf.open(tile.modelData.path)
+          // Click: copy the file. Double-click: open it. Right-click: show it
+          // in Files. A single click waits out the double-click interval.
+          onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) { shelf.reveal(tile.modelData.path); return }
+            singleClick.restart()
+          }
+          onDoubleClicked: mouse => {
+            if (mouse.button !== Qt.LeftButton) return
+            singleClick.stop()
+            shelf.open(tile.modelData.path)
+          }
           onReleased: dragProxy.Drag.active = false
           z: -1
+        }
+
+        Timer {
+          id: singleClick
+          interval: Qt.styleHints.mouseDoubleClickInterval + 30
+          onTriggered: if (shelf.copyFile(tile.modelData.path)) copied.restart()
+        }
+        // "Copied" badge over the tile for a moment.
+        Rectangle {
+          anchors.fill: parent
+          radius: parent.radius
+          color: Qt.rgba(0.19, 0.82, 0.35, 0.22)
+          border.width: 1.5
+          border.color: Theme.green
+          opacity: copied.running ? 1 : 0
+          visible: opacity > 0.01
+          Behavior on opacity { NumberAnimation { duration: Theme.ms(180) } }
+          Icon { anchors.centerIn: parent; name: "check"; size: 24; color: Theme.green }
+          Timer { id: copied; interval: 1100 }
         }
 
         // Dragging the tile hands a real file URI to whatever app is under
@@ -206,7 +227,8 @@ Page {
     IslandButton {
       size: 32
       icon: "plus"
-      text: I18n.t("Panodan ekle")
+      text: I18n.t("Yapıştır")
+      hint: "Ctrl+V"
       fontSize: 13
       accessibleName: I18n.t("Panodakini rafa ekle")
       onClicked: shelf.addFromClipboard()

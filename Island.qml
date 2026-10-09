@@ -54,9 +54,12 @@ import "components/Agents.js" as Agents
 //                                            then drops in as a circle and
 //                                            springs open (intro)
 //   files on the shelf                       shelf bubble (count + fill ring);
-//                                            clicking it shelves the clipboard
-//   pointer hover / leave                    opens after hoverDelay / closes
-//                                            after collapseDelay
+//                                            Ctrl+V on the open shelf shelves
+//                                            the clipboard
+//   pointer hover                            grows slightly (opens only with
+//                                            hoverExpand); click opens
+//   pointer leaves (opened by pointer)       closes after collapseDelay
+//   permission / question / agent error      short horizontal shake (nudge)
 //
 //   Agent session states and the events behind them are documented in
 //   services/AgentBridge.qml.
@@ -77,7 +80,7 @@ Item {
   // ================================================================ config
 
   readonly property var defaults: ({
-    hoverExpand: true,
+    hoverExpand: false,     // true: also open on hover (default: hover only grows; click opens)
     hoverDelay: 380,
     collapseDelay: 650,
     reduceMotion: false,
@@ -341,13 +344,15 @@ Item {
     defaultAgent: island.agentId
     omarchyAgent: island.omarchyAgent
     usageAgent: island.pageAgent
+    usageAgents: island.runningAgents.length ? island.runningAgents : [island.agentId]
     quietAfterMs: Math.max(20, Number(island.cfg("agentQuietSeconds")) || 180) * 1000
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {
         island.openPage("permission", "alert")
-        island.bounce()
+        island.nudge()
       } else {
         island.peek("agent:" + request.agent, I18n.t("%1 izin istiyor").arg(island.profile(request.agent).name), request.project + " · " + request.tool, island.profile(request.agent).color, 3500)
+        island.nudge()
       }
     }
     onPermissionResolved: (requestId, how) => {
@@ -359,8 +364,10 @@ Item {
       }
     }
     onSessionFailed: s => {
-      if (island.mode !== "expanded")
+      if (island.mode !== "expanded") {
         island.peek("agent:" + s.agent, I18n.t("%1 bir hatayla durdu").arg(island.profile(s.agent).name), s.project + (s.error ? " · " + s.error : ""), Theme.red, 3600, "agent")
+        island.nudge()
+      }
     }
     onSessionFinished: s => {
       if (island.cfg("peekOnAgentDone") !== false && island.cfg("peekOnClaudeDone") !== false && island.mode !== "expanded")
@@ -371,6 +378,7 @@ Item {
       var title = (s.state === "notice" ? I18n.t("%1 izin istiyor") : message ? I18n.t("%1 soruyor") : I18n.t("%1 seni bekliyor")).arg(island.profile(s.agent).name)
       var detail = s.state === "notice" ? (s.title || s.project) : (message || s.project)
       island.peek("agent:" + s.agent, title, detail, island.profile(s.agent).color, 4000, "agent")
+      island.nudge()
     }
   }
 
@@ -668,6 +676,23 @@ Item {
     NumberAnimation { target: island; property: "shakeX"; to: 10; duration: 80; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: -8; duration: 75; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: 6; duration: 70; easing.type: Easing.InOutSine }
+    NumberAnimation { target: island; property: "shakeX"; to: -3; duration: 65; easing.type: Easing.InOutSine }
+    NumberAnimation { target: island; property: "shakeX"; to: 0; duration: 60; easing.type: Easing.OutSine }
+  }
+
+  // A notification that wants you (a permission, a question, an error): a
+  // short, light side-to-side shake, like a notification on iPhone. Lighter
+  // and quicker than shake(), which says "no".
+  function nudge() {
+    if (Theme.reduceMotion) return
+    nudgeStart.restart()
+  }
+  // Starts once the banner has begun to open, so the shake reads on it.
+  Timer { id: nudgeStart; interval: 140; onTriggered: nudgeAnim.restart() }
+  SequentialAnimation {
+    id: nudgeAnim
+    NumberAnimation { target: island; property: "shakeX"; to: -6; duration: 50; easing.type: Easing.OutSine }
+    NumberAnimation { target: island; property: "shakeX"; to: 5; duration: 70; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: -3; duration: 65; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: 0; duration: 60; easing.type: Easing.OutSine }
   }
@@ -970,6 +995,9 @@ Item {
           island.cyclePage(1); event.accepted = true
         } else if (island.mode === "expanded" && event.key === Qt.Key_BracketLeft) {
           island.cyclePage(-1); event.accepted = true
+        } else if (island.page === "shelf" && island.mode === "expanded" && (event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
+          // Ctrl+V on the open shelf: what you copied goes on it.
+          island.shelf.addFromClipboard(); event.accepted = true
         } else if (island.page === "music" && event.key === Qt.Key_Space && island.mode === "expanded") {
           music.togglePlaying(); event.accepted = true
         }

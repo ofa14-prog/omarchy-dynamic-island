@@ -7,9 +7,7 @@ import "../components"
 // two activities run at once. `side` is +1 (right of the island) or -1 (left).
 // It emerges from under the island's edge on a spring and tucks back in.
 //
-//   click         open that activity (stop, for a screen recording; for the
-//                 shelf: put what is on the clipboard on the shelf, or open
-//                 it when the clipboard holds nothing new)
+//   click         open that activity (stop, for a screen recording)
 //   double-click  swap it with the center: it moves into the island and the
 //                 center activity takes this bubble's place
 //   right-click   same swap
@@ -60,7 +58,7 @@ Item {
       case "music": return (i.music.title || I18n.t("Müzik")) + (i.music.artist ? " — " + i.music.artist : "")
       case "timer": return (i.timer.mode === "stopwatch" ? I18n.t("Kronometre ") : I18n.t("Sayaç ")) + i.timer.display + (i.timer.paused ? I18n.t(" (duraklatıldı)") : "")
       case "recording": return I18n.t("Ekran kaydı ") + i.duration(i.nowMs - i.recording.startedAt) + I18n.t(" · durdurmak için tıkla")
-      case "shelf": return I18n.t("Raf") + " · " + I18n.count(i.shelf.count, "item") + I18n.t(" · tıkla: panodakini ekle")
+      case "shelf": return I18n.t("Raf") + " · " + I18n.count(i.shelf.count, "item")
       case "agent": {
         var s = i.agents.focusSession
         return i.profile(s ? s.agent : "").name + (s && s.project ? " · " + s.project : "") + (i.agents.pending.length ? I18n.t(" · izin bekliyor") : "")
@@ -70,7 +68,6 @@ Item {
   }
 
   function activate() {
-    if (kind === "shelf") { island.shelf.addFromClipboard(); return }
     if (kind === "recording") {
       island.recording.stop()
       island.peek("record", I18n.t("Kayıt durduruluyor"), "", Theme.red, 1500)

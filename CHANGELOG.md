@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.13.0
+
+- Home: quick-timer buttons removed; roomier spacing. Usage rings for every running agent (a card
+  per agent with its mark, 5-hour and weekly rings; click to open it), the battery next to the
+  clock, and shortcuts as a 3-column grid of tiles.
+- Shelf: Ctrl+V on the open shelf adds what you copied; clicking the shelf bubble or the empty
+  shelf no longer pastes (the bubble opens the shelf). Click a file to copy it to the clipboard
+  as a file (✓ on the tile), double-click to open it.
+- Notifications that want you (permission, question, agent error) give the island a short,
+  light horizontal shake instead of a vertical dip; ordinary banners don't.
+- Hover only grows the island; a click opens it, leaving closes it as before (`hoverExpand`
+  now defaults to `false`).
+- Usage is kept per agent (several at once).
+
 ## 1.12.1
 
 - Split island: the halves act on their own. Hovering a half opens that half's agent page; the

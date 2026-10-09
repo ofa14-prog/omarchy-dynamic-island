@@ -33,9 +33,10 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
 | **Genişletilmiş** | Ana · Müzik · Claude · Sayaç · Raf sekmeleri |
 | **Uyarılar** | Claude izin isterse ya da süre dolarsa ada kendiliğinden açılır, cevaplanana kadar açık kalır |
 
-- **Ana sayfa**: saat/tarih, Claude kullanım halkaları (5 saat / haftalık), pil; *varsayılan*
-  ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi uygulama ikonlarıyla
-  kısayollar; hızlı zamanlayıcılar.
+- **Ana sayfa**: saat, tarih ve pil; çalışan her ajan için bir kullanım kartı (logosu ve Claude
+  Code'daki gibi iki halka: 5 saat ve haftalık; hiçbiri çalışmıyorsa adanın ajanı; tıklayınca o
+  ajan açılır) ve *varsayılan* ajan, editör, tarayıcı, dosya yöneticisi ve terminaliniz için kendi
+  uygulama ikonlarıyla ızgara şeklinde kısayollar.
 - **Müzik**: tüm MPRIS oynatıcılar; kapak, sürüklenebilir ilerleme çubuğu, kontroller. Dalga formu kapak renginde.
   Müzik etkinliği yalnızca çalarken görünür; duraklatılınca ya da kapatılınca hemen kaybolur.
 - **Yenile**: Ana sayfadaki yuvarlak ok tüm Omarchy kabuğunu yeniden başlatır (bar ve ada yeniden
@@ -78,8 +79,10 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   (`sudo pacman -S cava`) ışık sesle birlikte nefes alır; değilse sabit durur. Kapatmak için
   `"ambient": false` (yalnızca hareketi kapatmak için `"ambientAudio": false`).
 - **Raf**: dosyaları adaya bırakın, sonra istediğiniz uygulamaya geri sürükleyin. Rafta bir şey
-  varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir; yuvarlağa
-  tıklamak kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan görsel/metin).
+  varken yandaki raf yuvarlağı kaç öğe olduğunu ve ne kadar dolu olduğunu gösterir. Raf açıkken
+  **Ctrl+V** kopyaladığınızı rafa ekler (Dosyalar'dan kopyalanan dosyalar ya da kopyalanan
+  görsel/metin). Bir dosyaya tek tıklamak onu panoya dosya olarak kopyalar, çift tıklamak açar,
+  sağ tık Dosyalar'da gösterir.
 - Claude Code'un kendi spinner'ı (`· ✢ * ✶ ✻ ✽`) ve durum parlaması canlı bir `claude` oturumundan
   alındı; diğer ajanlar kendi CLI'larının braille spinner'ını kullanır.
 - Kesirli ölçekte keskin: yazılar piksele hizalı, ikonlar ekranın gerçek piksel yoğunluğunda çizilir.
@@ -110,7 +113,7 @@ Terminalde yanıtlarsanız adadaki kart kendiliğinden kapanır.
 
 | Hareket | Sonuç |
 |---|---|
-| Üzerine gel | Hafif büyür, imlece doğru eğilir; 380 ms sonra açılır |
+| Üzerine gel | Hafif büyür, imlece doğru eğilir (ikiye bölünmüşse imlecin üstündeki yarı yanar). Üzerine gelince de açılması için `"hoverExpand": true` |
 | Tıkla | Açılır (basılıyken içe çöker) |
 | Sağ tık | Ana sayfa |
 | Müzikte orta tık | Oynat / duraklat |
