@@ -64,6 +64,11 @@ FocusScope {
     color: button.prominent ? button.tint
       : !button.filled ? (button.down ? Theme.fill : button.hovered ? Theme.hairline : "transparent")
       : button.down ? Theme.fillPressed : button.hovered ? Theme.fillHover : button.fillColor
+    GlassSheen {
+      visible: Theme.glass && (button.filled || button.prominent || button.hovered)
+      lit: button.hovered || button.down
+      strength: button.prominent ? 0.8 : 1
+    }
     scale: button.down ? 0.92 : 1
 
     Behavior on color { ColorAnimation { duration: Theme.ms(140) } }

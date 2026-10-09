@@ -145,6 +145,7 @@ Item {
     configFile.setText(JSON.stringify(next, null, 2) + "\n")
   }
   Binding { target: Theme; property: "bg"; value: island.cfg("color") }
+  Binding { target: Theme; property: "glass"; value: island.glassOn }
 
   // Text follows the Omarchy system font (omarchy font set …).
   Process {

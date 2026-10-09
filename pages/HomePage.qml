@@ -95,6 +95,7 @@ Page {
             width: 28; height: 28
             radius: 14
             color: themeMouse.containsMouse || page.themeOpen ? Theme.fillHover : Theme.fill
+            GlassSheen { lit: themeMouse.containsMouse }
             Icon {
               anchors.centerIn: parent
               name: island.glassOn ? "droplet" : "square-solid"
@@ -118,6 +119,7 @@ Page {
             width: 28; height: 28
             radius: 14
             color: langMouse.containsMouse || page.langOpen ? Theme.fillHover : Theme.fill
+            GlassSheen { lit: langMouse.containsMouse }
             Flag {
               anchors.centerIn: parent
               code: I18n.lang
@@ -156,6 +158,7 @@ Page {
       height: 52
       radius: 18
       color: Theme.fill
+GlassSheen {}
       Icon {
         id: barIcon
         x: 14
@@ -272,6 +275,7 @@ Page {
           height: 74
           radius: 20
           color: Theme.fill
+GlassSheen {}
           Row {
             id: cardRow
             anchors.centerIn: parent
@@ -329,6 +333,7 @@ Page {
           height: 46
           radius: 16
           color: tileMouse.pressed ? Theme.fillPressed : tileMouse.containsMouse ? Theme.fillHover : Theme.fill
+          GlassSheen { lit: tileMouse.containsMouse }
           scale: tileMouse.pressed ? 0.96 : 1
           Behavior on color { ColorAnimation { duration: Theme.ms(120) } }
           Behavior on scale {
@@ -386,7 +391,8 @@ Page {
     width: 176
     height: langList.implicitHeight + 12
     radius: 16
-    color: "#1c1c1e"
+    color: Theme.glass ? Qt.rgba(0.11, 0.11, 0.12, 0.88) : "#1c1c1e"
+    GlassSheen {}
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.10)
     opacity: page.langOpen ? 1 : 0
@@ -414,6 +420,7 @@ Page {
           height: 36
           radius: 11
           color: rowMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+          GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
           Flag {
             id: rowFlag
             x: 10
@@ -467,7 +474,8 @@ Page {
     width: 196
     height: themeList.implicitHeight + 12
     radius: 16
-    color: "#1c1c1e"
+    color: Theme.glass ? Qt.rgba(0.11, 0.11, 0.12, 0.88) : "#1c1c1e"
+    GlassSheen {}
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.10)
     opacity: page.themeOpen ? 1 : 0
@@ -497,6 +505,7 @@ Page {
           height: 36
           radius: 11
           color: rowMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+          GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
           Icon {
             id: rowIcon
             x: 10

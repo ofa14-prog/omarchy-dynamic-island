@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.16.0
+
+- Liquid Glass reaches every surface: buttons, shortcut tiles, usage cards, session rows, the
+  live feed, the message box, shelf tiles, the player chip and picker, the permission card, the
+  tab bar and the theme/language popups get a glass finish (`components/GlassSheen.qml`: a soft
+  top highlight, a bright rim along the upper curve, a faint edge; brighter on hover). Popups
+  turn translucent. Plain rectangles, no shaders; Normal theme unchanged.
+
 ## 1.15.3
 
 - Liquid Glass: the swell toward the pointer answers at once (stiff spring on its position,

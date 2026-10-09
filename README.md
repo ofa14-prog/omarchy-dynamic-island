@@ -44,6 +44,7 @@ right from the island.
   and pulls itself together (its two edges move on separate springs). Grab it and drag it along
   the bar; let go and it lands on the nearest tab (Liquid Glass only; in Normal it is a plain pill). Over the closed island the glass swells softly
   toward the pointer and flows back when it leaves, without ever tearing.
+- Under Liquid Glass every button, tile, card, row and popup has a glass finish too.
 - **Theme**: pick **Normal** (solid black) or **Liquid Glass** from the button next to the flag on
   Home (saved as `glass`).
 - **Home**: time, date and battery; a usage card per installed agent (its mark and two rings,

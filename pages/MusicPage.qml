@@ -117,6 +117,7 @@ Page {
         height: track.thickness
         radius: height / 2
         color: Theme.fill
+GlassSheen { strength: 0.6 }
         Behavior on height { NumberAnimation { duration: Theme.ms(160); easing.type: Easing.OutCubic } }
         Rectangle {
           width: Math.max(parent.height, parent.width * scrub.fraction)
@@ -197,6 +198,7 @@ Page {
     height: 30
     radius: 15
     color: chipMouse.containsMouse || page.pickerOpen ? Theme.fillHover : Theme.fill
+    GlassSheen { lit: chipMouse.containsMouse }
     Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
 
     Row {
@@ -267,7 +269,8 @@ Page {
     width: Math.min(parent.width, 320)
     height: Math.min(pickerList.contentHeight + 40, chip.y - 6)
     radius: 16
-    color: "#1c1c1e"
+    color: Theme.glass ? Qt.rgba(0.11, 0.11, 0.12, 0.88) : "#1c1c1e"
+    GlassSheen {}
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.10)
 
@@ -324,6 +327,7 @@ Page {
         height: 40
         radius: 11
         color: optMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
+        GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
 
         Icon {
           id: optIcon

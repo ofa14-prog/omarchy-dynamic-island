@@ -42,6 +42,7 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   seçtiğiniz sekmeye damla gibi uzanır ve sonra toparlanır (iki kenarı ayrı yaylarla hareket eder).
   Merceği tutup çubuk boyunca sürükleyebilirsiniz; bırakınca en yakın sekmeye oturur. Kapalı adanın
   üzerinde cam imlece doğru yumuşakça şişer, imleç ayrılınca geri akar; hiç kopmaz.
+- Liquid Glass temasında tüm düğmeler, kutular, kartlar, satırlar ve açılır menüler de cam görünümündedir.
 - **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Normal** (düz siyah) ya da **Liquid Glass**
   seçilir (`glass` olarak kaydedilir).
 - **Ana sayfa**: saat, tarih ve pil; kurulu her ajan için bir kullanım kartı (logosu ve Claude

@@ -11,6 +11,8 @@ QtObject {
   property bool reduceMotion: false
 
   property color bg: "#000000"
+  // Liquid Glass theme on: surfaces get GlassSheen, popups turn translucent.
+  property bool glass: false
   readonly property color fg: "#ffffff"
   readonly property color secondary: Qt.rgba(1, 1, 1, 0.62)
   readonly property color tertiary: Qt.rgba(1, 1, 1, 0.40)

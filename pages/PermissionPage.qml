@@ -78,6 +78,7 @@ Page {
       height: what.implicitHeight + 24
       radius: 18
       color: Theme.fill
+GlassSheen {}
 
       Column {
         id: what

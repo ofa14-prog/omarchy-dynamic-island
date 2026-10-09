@@ -159,6 +159,7 @@ Page {
           height: chip + 4
           radius: height / 2
           color: open ? Theme.fill : barMouse.containsMouse ? Theme.fillHover : "transparent"
+GlassSheen { visible: Theme.glass && (agentBar.open || barMouse.containsMouse) }
           clip: true
           Behavior on width {
             enabled: !Theme.reduceMotion
@@ -319,6 +320,8 @@ Page {
               width: 40; height: 6; radius: 3
               anchors.verticalCenter: parent.verticalCenter
               color: Theme.fill
+        GlassSheen {}
+GlassSheen { strength: 0.7 }
               Rectangle {
                 width: Math.max(6, parent.width * Math.min(1, modelData.v))
                 height: parent.height; radius: 3
@@ -358,6 +361,7 @@ Page {
           height: 58
           radius: 18
           color: rowMouse.containsMouse || watched ? Theme.fillHover : Theme.fill
+          GlassSheen { lit: rowMouse.containsMouse }
           border.width: waiting ? 1 : 0
           border.color: island.profile(s.agent).color
           Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
@@ -493,6 +497,7 @@ Page {
       height: big ? 340 : 168
       radius: 16
       color: Qt.rgba(1, 1, 1, 0.05)
+GlassSheen {}
       border.width: 1
       border.color: Theme.hairline
       // Quick and soft: starts at once, eases out.
@@ -679,6 +684,7 @@ Page {
       height: 42
       radius: 21
       color: field.activeFocus ? Theme.fillHover : Theme.fill
+      GlassSheen { lit: field.activeFocus }
       border.width: field.activeFocus ? 1 : 0
       border.color: tint
       Behavior on color { ColorAnimation { duration: Theme.ms(140) } }

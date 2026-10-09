@@ -35,6 +35,7 @@ Page {
     height: parent.height
     radius: height / 2
     color: Qt.rgba(1, 1, 1, 0.06)
+GlassSheen { strength: 0.7 }
   }
 
   // ---- selection

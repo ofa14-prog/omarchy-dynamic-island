@@ -10,5 +10,6 @@ Label 1.0 Label.qml
 Icon 1.0 Icon.qml
 Flag 1.0 Flag.qml
 LiquidGlass 1.0 LiquidGlass.qml
+GlassSheen 1.0 GlassSheen.qml
 ShimmerText 1.0 ShimmerText.qml
 singleton I18n 1.0 I18n.qml
