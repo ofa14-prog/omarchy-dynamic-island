@@ -19,6 +19,9 @@ ShaderEffect {
   property point light: Qt.point(-0.55, -0.83)
   property real rim: 1
   property real energy: 0
+  property color ambL: "black"
+  property color ambR: "black"
+  property real ambMix: 0
   readonly property size size: Qt.size(width, height)
 
   fragmentShader: Qt.resolvedUrl("../shaders/liquid.frag.qsb")

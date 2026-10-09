@@ -27,6 +27,9 @@ layout(std140, binding = 0) uniform buf {
     vec2 light;     // unit vector toward the light (y down)
     float rim;      // edge highlight strength
     float energy;   // 0..1 flash of light on touch / morph
+    vec4 ambL;      // the music's ambient colours, left and right
+    vec4 ambR;
+    float ambMix;   // 0: none, 1: full (follows the sound)
 };
 
 float sdRoundBox(vec2 p, vec2 b, vec4 r) {
@@ -82,7 +85,14 @@ void main() {
     float top = clamp(1.0 - inside / 40.0, 0.0, 1.0) * max(-n.y, 0.0) * 0.04;
 
     float lit = edge + glow + top + energy * (0.06 + 0.25 * band);
-    vec3 col = tint.rgb * tint.a + vec3(lit);
-    float a = clamp(tint.a + lit * 0.9, 0.0, 1.0);
+    // The music's colours live in the glass: a faint film across it (left
+    // colour to right colour) and a stronger tint in the light it gathers
+    // at the edges, so it reads as glass lit by the music.
+    float span = clamp((p.x - rectA.x) / max(1.0, (rectB.z > 0.5 ? rectB.x + rectB.z : rectA.x + rectA.z) - rectA.x), 0.0, 1.0);
+    vec3 amb = mix(ambL.rgb, ambR.rgb, smoothstep(0.15, 0.85, span));
+    vec3 film = amb * ambMix * (0.10 + 0.22 * halo);
+    vec3 light = mix(vec3(1.0), amb, ambMix * 0.7) * lit;
+    vec3 col = tint.rgb * tint.a + film + light;
+    float a = clamp(tint.a + lit * 0.9 + ambMix * 0.06, 0.0, 1.0);
     fragColor = vec4(col, a) * cover * qt_Opacity;
 }

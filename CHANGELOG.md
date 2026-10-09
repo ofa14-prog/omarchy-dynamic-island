@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.14.1
+
+- Bubbles no longer look dimmed under Liquid Glass: they sat below the island's glass layer, so
+  the glass was painted over their icons. With glass on they are drawn above it.
+- The music's ambient colors now live in the glass: a faint left-to-right film across it and
+  colored light gathered at its edges, following the sound, instead of a glow showing through
+  from underneath.
+
 ## 1.14.0
 
 - **Liquid Glass** (dark): the island, its split halves and the bubbles are drawn as one glass

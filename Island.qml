@@ -1243,6 +1243,9 @@ Item {
           tint: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, Math.max(0.36, Math.min(0.95, Number(island.cfg("glassOpacity")) || 0.56)))
           light: island.glassLight
           energy: island.glassEnergy
+          ambL: ambient.leftColor
+          ambR: ambient.rightColor
+          ambMix: ambient.opacity * (0.55 + ambient.level * 0.45)
         }
 
         // Drawn directly (no offscreen texture) so text and icons inside stay

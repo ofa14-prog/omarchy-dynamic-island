@@ -38,7 +38,10 @@ Item {
   x: tucked ? restX - side * width * 0.9 : restX
   scale: shown ? 1 : (tucked ? 0.3 : 0.85)
   opacity: shown ? 1 : 0
-  z: -1
+  // Under the island so it slides out from its edge; with glass on, above
+  // it: the island's glass is painted in the stage, over anything below,
+  // and would dim the bubble's icon.
+  z: island.glassOn ? 1 : -1
 
   readonly property bool hovered: mouse.containsMouse
   // Drawn size and place, for the glass surface.
