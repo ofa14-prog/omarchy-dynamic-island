@@ -242,14 +242,20 @@ Item {
   // The agents the AI page's bar offers: the running ones; with none
   // running, every installed agent (so you can still pick one, see its
   // usage, connect it or start a session of it).
-  readonly property var barAgents: runningAgents.length ? runningAgents : usageAgents
+  // Every installed agent stays reachable: running ones first (most urgent
+  // first), then the rest.
+  readonly property var barAgents: {
+    var out = runningAgents.slice()
+    usageAgents.forEach(id => { if (out.indexOf(id) === -1) out.push(id) })
+    return out
+  }
   // Which agent the AI page shows. Nobody is favoured:
   //   the one you picked in its bar or overview (until the island closes);
   //   else the agent that is working or waiting on you (most urgent);
   //   else the only agent with a live session;
   //   else "" — the neutral overview of every agent.
   readonly property string pageAgent: {
-    if (viewAgent && (barAgents.indexOf(viewAgent) !== -1 || usageAgents.indexOf(viewAgent) !== -1)) return viewAgent
+    if (viewAgent && barAgents.indexOf(viewAgent) !== -1) return viewAgent
     if (workingAgents.length) return workingAgents[0]
     if (runningAgents.length === 1) return runningAgents[0]
     return ""

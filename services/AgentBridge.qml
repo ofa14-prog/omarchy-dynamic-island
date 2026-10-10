@@ -243,6 +243,17 @@ Item {
   function sessionFor(msg) {
     var id = msg.session || "unknown"
     var s = sessions[id]
+    if (!s && msg.agentPid) {
+      // A placeholder from the scan (no id yet) for this same process.
+      for (var k in sessions) {
+        var o = sessions[k]
+        if (o.agentPid === msg.agentPid && o.agent === msg.agent && /-\d+$/.test(k) && k !== id) {
+          var next = {}
+          for (var j in sessions) if (j !== k) next[j] = sessions[j]
+          sessions = next
+        }
+      }
+    }
     if (!s) {
       s = {
         id: id, agent: msg.agent || "", state: "ready", project: msg.project || "", cwd: msg.cwd || "",
@@ -893,6 +904,44 @@ Item {
     if (!id || id === omarchyAgent || !p.launch) { Quickshell.execDetached(["omarchy-agent", "--pick"]); return }
     Quickshell.execDetached(["sh", "-c", "[ -d \"$HOME/Work\" ] && cd \"$HOME/Work\"; exec omarchy-launch-tui --app-id=org.omarchy.agent \"$@\"", "sh"].concat(p.launch))
   }
+
+  // ---------------------------------------------------------------- scan
+
+  // Finds the agent sessions open right now (bin/dynamic-island-scan), for
+  // when no hook has spoken yet: after a shell restart, or a session started
+  // before the island. Run at start and from the AI page's refresh button.
+  // Known sessions only get missing details; new ones come in idle (or
+  // working, when Claude Code says it is busy). A session found without an
+  // id ("agy-<pid>"…) is replaced by the real one at its first hook event.
+  signal scanned(int found, int added)
+  property bool scanning: scanner.running
+  function scan() { if (!scanner.running) scanner.running = true }
+  Process {
+    id: scanner
+    command: [bridge.pluginDir + "/bin/dynamic-island-scan"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var found = 0, added = 0
+        text.split("\n").forEach(line => {
+          var m
+          try { m = JSON.parse(line) } catch (e) { return }
+          if (!m || !m.session || !m.agent) return
+          found++
+          var known = bridge.sessions[m.session]
+          var s = bridge.sessionFor({ session: m.session, agent: m.agent, cwd: m.cwd, project: m.project,
+                                      pids: m.pids, agentPid: m.agentPid, transcript: m.transcript })
+          if (!known) {
+            added++
+            if (m.busy) { bridge.startTurn(s) } else { s.state = "ready" }
+            bridge.logEvent({ event: "(found by scan)", session: m.session, agent: m.agent })
+          }
+          bridge.commit(s)
+        })
+        bridge.scanned(found, added)
+      }
+    }
+  }
+  Timer { running: bridge.pluginDir !== ""; interval: 1500; onTriggered: bridge.scan() }
 
   // ---------------------------------------------------------------- liveness
 

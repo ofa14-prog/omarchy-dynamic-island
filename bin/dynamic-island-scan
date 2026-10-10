@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Find the coding-agent sessions that are open right now, without waiting
+for a hook event (after a shell restart, or for a session started before the
+island). Read-only: it looks at /proc and the agents' own state files.
+
+    dynamic-island-scan        one JSON line per open interactive session
+
+  {agent, session, cwd, project, pids, agentPid, transcript, busy}
+
+  Claude Code   ~/.claude/sessions/<pid>.json (session id, folder, status)
+  Antigravity   the agy process's own log (last conversation id)
+  Codex         the rollout file the codex process keeps open
+  OpenCode      the process only (no session id: "opencode-<pid>")
+
+Only processes attached to a terminal count, so helpers and headless runs
+(claude -p, agy -p, the browser bridge) are left out.
+"""
+
+import json
+import os
+import re
+
+HOME = os.path.expanduser("~")
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+AGENTS = {"claude": "claude", "agy": "antigravity", "codex": "codex", "opencode": "opencode"}
+
+
+def read(path, limit=1 << 20):
+    try:
+        with open(path, "rb") as f:
+            return f.read(limit).decode("utf-8", "replace")
+    except OSError:
+        return ""
+
+
+def proc(pid):
+    """(comm, ppid, argv, cwd, tty) of a process, or None."""
+    try:
+        stat = read(f"/proc/{pid}/stat")
+        comm = stat[stat.index("(") + 1 : stat.rindex(")")]
+        ppid = int(stat[stat.rindex(")") + 2 :].split()[1])
+        argv = read(f"/proc/{pid}/cmdline").split("\0")
+        cwd = os.readlink(f"/proc/{pid}/cwd")
+        tty = os.readlink(f"/proc/{pid}/fd/0")
+        return comm, ppid, argv, cwd, tty
+    except (OSError, ValueError):
+        return None
+
+
+def chain(pid, limit=16):
+    out = []
+    while pid > 1 and len(out) < limit:
+        out.append(pid)
+        p = proc(pid)
+        if not p:
+            break
+        pid = p[1]
+    return out
+
+
+def fds(pid):
+    out = []
+    try:
+        for fd in os.listdir(f"/proc/{pid}/fd"):
+            try:
+                out.append(os.readlink(f"/proc/{pid}/fd/{fd}"))
+            except OSError:
+                pass
+    except OSError:
+        pass
+    return out
+
+
+def claude(pid, cwd):
+    rec = {}
+    try:
+        rec = json.loads(read(os.path.join(HOME, ".claude", "sessions", f"{pid}.json")))
+    except ValueError:
+        pass
+    if rec.get("kind") not in (None, "interactive"):
+        return None
+    sid = rec.get("sessionId") or f"claude-{pid}"
+    cwd = rec.get("cwd") or cwd
+    transcript = os.path.join(HOME, ".claude", "projects", re.sub(r"[^A-Za-z0-9]", "-", cwd), f"{sid}.jsonl")
+    return sid, cwd, transcript if os.path.exists(transcript) else "", rec.get("status") == "busy"
+
+
+def antigravity(pid, cwd):
+    log = next((f for f in fds(pid) if "/log/cli-" in f and f.endswith(".log")), "")
+    ids = UUID.findall(read(log)[-262144:]) if log else []
+    hits = [i for i in ids if os.path.isdir(os.path.join(HOME, ".gemini", "antigravity-cli", "brain", i))]
+    if not hits:
+        return f"agy-{pid}", cwd, "", False
+    sid = hits[-1]
+    transcript = os.path.join(HOME, ".gemini", "antigravity-cli", "brain", sid, ".system_generated", "logs", "transcript_full.jsonl")
+    return sid, cwd, transcript if os.path.exists(transcript) else "", False
+
+
+def codex(pid, cwd):
+    rollout = next((f for f in fds(pid) if "/.codex/sessions/" in f and f.endswith(".jsonl")), "")
+    m = UUID.search(os.path.basename(rollout)) if rollout else None
+    return (m.group(0) if m else f"codex-{pid}"), cwd, rollout, False
+
+
+def main():
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        pid = int(name)
+        p = proc(pid)
+        if not p:
+            continue
+        comm, _, argv, cwd, tty = p
+        exe = os.path.basename(argv[0]) if argv and argv[0] else comm
+        agent = AGENTS.get(exe) or AGENTS.get(comm)
+        if not agent or not tty.startswith("/dev/pts/"):
+            continue
+        if any(a in ("-p", "--print", "--prompt", "--chrome-native-host", "mic-serve") for a in argv[1:]):
+            continue
+        if agent == "claude":
+            found = claude(pid, cwd)
+        elif agent == "antigravity":
+            found = antigravity(pid, cwd)
+        elif agent == "codex":
+            found = codex(pid, cwd)
+        else:
+            found = (f"opencode-{pid}", cwd, "", False)
+        if not found:
+            continue
+        sid, cwd, transcript, busy = found
+        print(json.dumps({
+            "agent": agent, "session": sid, "cwd": cwd,
+            "project": os.path.basename(cwd.rstrip("/")) or cwd,
+            "pids": chain(pid), "agentPid": pid,
+            "transcript": transcript, "busy": busy,
+        }))
+
+
+if __name__ == "__main__":
+    main()

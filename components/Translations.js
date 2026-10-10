@@ -4,6 +4,11 @@
 .pragma library
 
 var en = {
+  "Taranıyor…": "Looking…",
+  "%1 yeni oturum bulundu": "Found %1 new",
+  "Yeni oturum yok": "Nothing new",
+  "Açık oturum bulunamadı": "No open sessions",
+  "Açık oturumları tara": "Look for open sessions",
   "Bağlı değil": "Not connected",
   "Açık|appearance": "Light",
   "Koyu": "Dark",
@@ -185,6 +190,11 @@ var en = {
 }
 
 var es = {
+  "Taranıyor…": "Buscando…",
+  "%1 yeni oturum bulundu": "%1 nuevas",
+  "Yeni oturum yok": "Nada nuevo",
+  "Açık oturum bulunamadı": "Ninguna abierta",
+  "Açık oturumları tara": "Buscar sesiones abiertas",
   "Bağlı değil": "No conectado",
   "Açık|appearance": "Claro",
   "Koyu": "Oscuro",
@@ -366,6 +376,11 @@ var es = {
 }
 
 var ru = {
+  "Taranıyor…": "Поиск…",
+  "%1 yeni oturum bulundu": "Найдено: %1",
+  "Yeni oturum yok": "Нового нет",
+  "Açık oturum bulunamadı": "Сессий нет",
+  "Açık oturumları tara": "Найти открытые сессии",
   "Bağlı değil": "Не подключён",
   "Açık|appearance": "Светлая",
   "Koyu": "Тёмная",

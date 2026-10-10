@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.18.0
+
+- Session scan (`bin/dynamic-island-scan`): finds the agent sessions open right now from /proc
+  and the agents' own state (Claude Code's session records, Antigravity's log, Codex's rollout
+  file), so sessions show up without waiting for a hook: at start (after a shell restart) and
+  from a new refresh button on the AI page. Read-only; only processes on a terminal count.
+- The AI page's agent bar always offers every installed agent (running ones first), so an
+  agent's controls are reachable even while it is not running.
+
 ## 1.17.3
 
 - Removed the sideways shake on notifications (permission, question, agent error).

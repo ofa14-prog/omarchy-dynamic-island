@@ -16,6 +16,27 @@ Page {
   readonly property string agentId: island.pageAgent
   // No agent at work and none picked: an overview of every agent instead.
   readonly property bool overview: agentId === ""
+
+  // ---- refresh: look for open agent sessions now (bin/dynamic-island-scan)
+  property string scanNote: ""
+  Timer { id: scanNoteTimer; interval: 2200; onTriggered: page.scanNote = "" }
+  Connections {
+    target: page.agents
+    function onScanned(found, added) {
+      page.scanNote = added > 0 ? I18n.t("%1 yeni oturum bulundu").arg(added)
+        : found > 0 ? I18n.t("Yeni oturum yok") : I18n.t("Açık oturum bulunamadı")
+      scanNoteTimer.restart()
+    }
+  }
+  component RefreshButton: IslandButton {
+    size: 30
+    iconSize: 15
+    icon: "restart"
+    text: page.agents.scanning ? I18n.t("Taranıyor…") : page.scanNote
+    fontSize: 12
+    accessibleName: I18n.t("Açık oturumları tara")
+    onClicked: page.agents.scan()
+  }
   readonly property bool perAgent: island.barAgents.length > 1
   readonly property var sessions: overview ? [] : agents.sessionList.filter(s => !perAgent || s.agent === agentId).slice(0, 4)
   readonly property string product: island.profile(agentId).product
@@ -139,6 +160,10 @@ Page {
           font.pixelSize: 13
           color: Theme.tertiary
         }
+      }
+      RefreshButton {
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
       }
     }
     Column {
@@ -922,6 +947,7 @@ GlassSheen {}
     Row {
       visible: !page.overview
       spacing: 8
+      RefreshButton { size: 36; anchors.verticalCenter: parent.verticalCenter }
       IslandButton {
         size: 36
         icon: "plus"

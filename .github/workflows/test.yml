@@ -19,7 +19,7 @@ jobs:
       - name: Every UI string is translated (en, es, ru)
         run: python tests/check_i18n.py
       - name: Helper scripts compile
-        run: python -m py_compile bin/dynamic-island-hook bin/dynamic-island-agent-setup bin/dynamic-island-transcript
+        run: python -m py_compile bin/dynamic-island-hook bin/dynamic-island-agent-setup bin/dynamic-island-transcript bin/dynamic-island-scan
       - name: Compiled shader is present
         run: test -s shaders/liquid.frag.qsb
       - name: Shell scripts parse
