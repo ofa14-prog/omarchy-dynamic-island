@@ -244,8 +244,17 @@ Item {
   // running, every installed agent (so you can still pick one, see its
   // usage, connect it or start a session of it).
   readonly property var barAgents: runningAgents.length ? runningAgents : usageAgents
-  readonly property string pageAgent: viewAgent && barAgents.indexOf(viewAgent) !== -1 ? viewAgent
-    : runningAgents.length ? runningAgents[0] : agentId
+  // Which agent the AI page shows. Nobody is favoured:
+  //   the one you picked in its bar or overview (until the island closes);
+  //   else the agent that is working or waiting on you (most urgent);
+  //   else the only agent with a live session;
+  //   else "" — the neutral overview of every agent.
+  readonly property string pageAgent: {
+    if (viewAgent && (barAgents.indexOf(viewAgent) !== -1 || usageAgents.indexOf(viewAgent) !== -1)) return viewAgent
+    if (workingAgents.length) return workingAgents[0]
+    if (runningAgents.length === 1) return runningAgents[0]
+    return ""
+  }
   function showAgent(id) {
     viewAgent = id || ""
     openPage(agents.pending.some(r => r.agent === id) ? "permission" : "agent", "pointer")

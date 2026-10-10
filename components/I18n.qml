@@ -42,6 +42,7 @@ QtObject {
     tool:    { en: ["tool", "tools"], es: ["herramienta", "herramientas"], ru: ["инструмент", "инструмента", "инструментов"], tr: ["araç"] },
     file:    { en: ["file", "files"], es: ["archivo", "archivos"], ru: ["файл", "файла", "файлов"], tr: ["dosya"] },
     item:    { en: ["item", "items"], es: ["elemento", "elementos"], ru: ["элемент", "элемента", "элементов"], tr: ["öğe"] },
+    agent:   { en: ["agent", "agents"], es: ["agente", "agentes"], ru: ["агент", "агента", "агентов"], tr: ["ajan"] },
     minute:  { en: ["minute", "minutes"], es: ["minuto", "minutos"], ru: ["минута", "минуты", "минут"], tr: ["dakika"] }
   })
   function count(n, noun) {

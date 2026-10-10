@@ -14,8 +14,10 @@ Page {
   // The page shows one agent at a time (island.pageAgent); the bar switches
   // between the agents that are running.
   readonly property string agentId: island.pageAgent
+  // No agent at work and none picked: an overview of every agent instead.
+  readonly property bool overview: agentId === ""
   readonly property bool perAgent: island.barAgents.length > 1
-  readonly property var sessions: agents.sessionList.filter(s => !perAgent || s.agent === agentId).slice(0, 4)
+  readonly property var sessions: overview ? [] : agents.sessionList.filter(s => !perAgent || s.agent === agentId).slice(0, 4)
   readonly property string product: island.profile(agentId).product
   readonly property color tint: island.profile(agentId).color
   readonly property string logo: island.logoFor(agentId)
@@ -120,8 +122,109 @@ Page {
     width: parent.width
     spacing: 12
 
+    // ---- overview: every agent, none favoured. A card each with its
+    // mark, state, usage and actions; the card opens that agent's page.
+    Item {
+      visible: page.overview
+      width: parent.width
+      height: 30
+      Row {
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 10
+        Icon { anchors.verticalCenter: parent.verticalCenter; name: "sparkles"; size: 20; color: Theme.fg }
+        Label { anchors.verticalCenter: parent.verticalCenter; text: "AI"; font.pixelSize: 16; strong: true }
+        Label {
+          anchors.verticalCenter: parent.verticalCenter
+          text: I18n.count(island.usageAgents.length, "agent")
+          font.pixelSize: 13
+          color: Theme.tertiary
+        }
+      }
+    }
+    Column {
+      visible: page.overview
+      width: parent.width
+      spacing: 8
+      Repeater {
+        model: island.usageAgents
+        delegate: Rectangle {
+          id: agentCard
+          required property string modelData
+          readonly property var prof: island.profile(modelData)
+          readonly property var mine: agents.sessionList.filter(x => x.agent === modelData)
+          readonly property var u: agents.usageOf(modelData)
+          readonly property bool connected: agents.installed[modelData] === true
+          width: parent.width
+          height: 58
+          radius: 18
+          color: cardMouse.containsMouse ? Theme.fillHover : Theme.fill
+          GlassSheen { lit: cardMouse.containsMouse }
+          MouseArea {
+            id: cardMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: island.viewAgent = agentCard.modelData
+          }
+          Icon {
+            id: cardIcon
+            x: 16
+            anchors.verticalCenter: parent.verticalCenter
+            source: island.logoFor(agentCard.modelData)
+            name: source ? "" : "sparkles"
+            color: agentCard.prof.color
+            size: 24
+          }
+          Column {
+            anchors.left: cardIcon.right
+            anchors.leftMargin: 12
+            anchors.right: cardActions.left
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            Label { width: parent.width; text: agentCard.prof.product; font.pixelSize: 14; strong: true }
+            Label {
+              width: parent.width
+              font.pixelSize: 12
+              color: Theme.secondary
+              text: (agentCard.mine.length ? I18n.count(agentCard.mine.length, "session")
+                     : agentCard.connected || agentCard.prof.integration === "none" ? I18n.t("Aktif oturum yok") : I18n.t("Bağlı değil"))
+                + (agentCard.u.session >= 0 ? "  ·  " + I18n.t("5s") + " " + Math.round(agentCard.u.session * 100) + "%" : "")
+                + (agentCard.u.weekly >= 0 ? "  ·  " + I18n.t("7g") + " " + Math.round(agentCard.u.weekly * 100) + "%" : "")
+            }
+          }
+          Row {
+            id: cardActions
+            anchors.right: parent.right
+            anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+            IslandButton {
+              visible: !agentCard.connected && agentCard.prof.integration !== "none"
+              size: 34
+              text: I18n.t("Bağla")
+              fontSize: 13
+              tint: agentCard.prof.color
+              accessibleName: I18n.t("%1 bağlantısını kur").arg(agentCard.prof.product)
+              onClicked: agents.installHooks(agentCard.modelData)
+            }
+            IslandButton {
+              size: 34
+              icon: "plus"
+              iconSize: 16
+              accessibleName: I18n.t("Yeni ") + agentCard.prof.name + I18n.t(" oturumu")
+              onClicked: { agents.newSession(agentCard.modelData); island.collapse() }
+            }
+          }
+          Accessible.role: Accessible.Button
+          Accessible.name: prof.product
+        }
+      }
+    }
+
     // ---- header
     Item {
+      visible: !page.overview
       width: parent.width
       height: 30
       Row {
@@ -770,7 +873,8 @@ GlassSheen {}
 
     // ---- empty / setup state
     Rectangle {
-      visible: page.sessions.length === 0
+      // (only on an agent's own page)
+      visible: page.sessions.length === 0 && !page.overview
       width: parent.width
       height: 72
       radius: 18
@@ -816,6 +920,7 @@ GlassSheen {}
 
     // ---- shortcuts
     Row {
+      visible: !page.overview
       spacing: 8
       IslandButton {
         size: 36

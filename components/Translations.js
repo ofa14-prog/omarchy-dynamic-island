@@ -4,6 +4,7 @@
 .pragma library
 
 var en = {
+  "Bağlı değil": "Not connected",
   "Açık|appearance": "Light",
   "Koyu": "Dark",
   "Tema": "Theme",
@@ -184,6 +185,7 @@ var en = {
 }
 
 var es = {
+  "Bağlı değil": "No conectado",
   "Açık|appearance": "Claro",
   "Koyu": "Oscuro",
   "Tema": "Tema",
@@ -364,6 +366,7 @@ var es = {
 }
 
 var ru = {
+  "Bağlı değil": "Не подключён",
   "Açık|appearance": "Светлая",
   "Koyu": "Тёмная",
   "Tema": "Тема",

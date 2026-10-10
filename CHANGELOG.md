@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.17.2
+
+- The AI page favours no agent. It opens on the agent you picked, else the one working or
+  waiting on you, else the only agent with a live session; otherwise on a neutral overview of
+  every agent (a card each with its state, usage, Connect and a new-session button; click a
+  card for its page). Before, an idle island always opened on the default agent (Claude), even
+  when only another agent was open.
+
 ## 1.17.1
 
 - AI page with no agent running: the agent bar lists every installed agent (not just the
