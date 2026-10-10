@@ -43,7 +43,9 @@ right from the island.
   The tab bar's selection is a small glass lens that stretches like a drop toward the tab you pick
   and pulls itself together (its two edges move on separate springs). Grab it and drag it along
   the bar; let go and it lands on the nearest tab (Liquid Glass only; in Normal it is a plain pill). 
-- Under Liquid Glass every button, tile, card, row and popup has a glass finish too.
+- Under Liquid Glass every button, tile, card, row and popup has a glass finish too. Hovering one
+  adds no highlight: its glass swells a few pixels like a water balloon, in place, and the text on
+  it stays still.
 - **Theme**: **Dark** or **Light** appearance, and **Liquid Glass** on or off in either, from the
   button next to the flag on Home (saved as `appearance` and `glass`). Four looks: solid black,
   dark smoky glass, solid white, and clear light glass (clear while closed, milkier when open so

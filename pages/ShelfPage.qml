@@ -100,7 +100,7 @@ Page {
         width: 86; height: 74
         radius: 16
         color: tileMouse.containsMouse || tile.ListView.isCurrentItem && list.activeFocus ? Theme.fillHover : Theme.fill
-        GlassSheen { lit: tileMouse.containsMouse }
+        GlassSheen { takeFill: true; fill: tile.ListView.isCurrentItem && list.activeFocus ? Theme.fillHover : Theme.fill; lit: tileMouse.containsMouse }
         scale: tileMouse.pressed ? 0.94 : 1
         Behavior on scale {
           enabled: !Theme.reduceMotion

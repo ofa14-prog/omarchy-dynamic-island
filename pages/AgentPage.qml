@@ -183,7 +183,7 @@ Page {
           height: 58
           radius: 18
           color: cardMouse.containsMouse ? Theme.fillHover : Theme.fill
-          GlassSheen { lit: cardMouse.containsMouse }
+          GlassSheen { takeFill: true; lit: cardMouse.containsMouse; pressed: cardMouse.pressed }
           MouseArea {
             id: cardMouse
             anchors.fill: parent
@@ -286,8 +286,8 @@ Page {
           width: open ? openW : closedW
           height: chip + 4
           radius: height / 2
-          color: open ? Theme.fill : barMouse.containsMouse ? Theme.fillHover : "transparent"
-GlassSheen { visible: Theme.glass && (agentBar.open || barMouse.containsMouse) }
+          color: open ? Theme.fill : barMouse.containsMouse && !Theme.glass ? Theme.fillHover : "transparent"
+GlassSheen { visible: Theme.glass && agentBar.open }
           clip: true
           Behavior on width {
             enabled: !Theme.reduceMotion
@@ -333,7 +333,7 @@ GlassSheen { visible: Theme.glass && (agentBar.open || barMouse.containsMouse) }
                   anchors.fill: parent
                   radius: width / 2
                   color: chipItem.current && agentBar.open ? Theme.fillHover
-                    : chipMouse.containsMouse ? Theme.fill : "transparent"
+                    : chipMouse.containsMouse && !Theme.glass ? Theme.fill : "transparent"
                 }
                 Icon {
                   anchors.centerIn: parent
@@ -489,7 +489,7 @@ GlassSheen { strength: 0.7 }
           height: 58
           radius: 18
           color: rowMouse.containsMouse || watched ? Theme.fillHover : Theme.fill
-          GlassSheen { lit: rowMouse.containsMouse }
+          GlassSheen { takeFill: true; fill: row.watched ? Theme.fillHover : Theme.fill; lit: rowMouse.containsMouse; pressed: rowMouse.pressed }
           border.width: waiting ? 1 : 0
           border.color: island.profile(s.agent).color
           Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
@@ -812,7 +812,7 @@ GlassSheen {}
       height: 42
       radius: 21
       color: field.activeFocus ? Theme.fillHover : Theme.fill
-      GlassSheen { lit: field.activeFocus }
+      GlassSheen {}
       border.width: field.activeFocus ? 1 : 0
       border.color: tint
       Behavior on color { ColorAnimation { duration: Theme.ms(140) } }

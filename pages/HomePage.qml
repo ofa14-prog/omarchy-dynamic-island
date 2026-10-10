@@ -95,7 +95,7 @@ Page {
             width: 28; height: 28
             radius: 14
             color: themeMouse.containsMouse || page.themeOpen ? Theme.fillHover : Theme.fill
-            GlassSheen { lit: themeMouse.containsMouse }
+            GlassSheen { takeFill: true; fill: page.themeOpen ? Theme.fillHover : Theme.fill; lit: themeMouse.containsMouse; pressed: themeMouse.pressed }
             Icon {
               anchors.centerIn: parent
               name: island.glassOn ? "droplet" : island.lightMode ? "sun" : "moon"
@@ -119,7 +119,7 @@ Page {
             width: 28; height: 28
             radius: 14
             color: langMouse.containsMouse || page.langOpen ? Theme.fillHover : Theme.fill
-            GlassSheen { lit: langMouse.containsMouse }
+            GlassSheen { takeFill: true; fill: page.langOpen ? Theme.fillHover : Theme.fill; lit: langMouse.containsMouse; pressed: langMouse.pressed }
             Flag {
               anchors.centerIn: parent
               code: I18n.lang
@@ -333,7 +333,7 @@ GlassSheen {}
           height: 46
           radius: 16
           color: tileMouse.pressed ? Theme.fillPressed : tileMouse.containsMouse ? Theme.fillHover : Theme.fill
-          GlassSheen { lit: tileMouse.containsMouse }
+          GlassSheen { takeFill: true; lit: tileMouse.containsMouse }
           scale: tileMouse.pressed ? 0.96 : 1
           Behavior on color { ColorAnimation { duration: Theme.ms(120) } }
           Behavior on scale {
@@ -419,8 +419,8 @@ GlassSheen {}
           width: parent.width
           height: 36
           radius: 11
-          color: rowMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
-          GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
+          color: rowMouse.containsMouse && !Theme.glass ? Theme.fillHover : current ? Theme.fill : "transparent"
+          GlassSheen { strength: 0.8; visible: Theme.glass && parent.current; takeFill: true; lit: rowMouse.containsMouse; pressed: rowMouse.pressed }
           Flag {
             id: rowFlag
             x: 10
@@ -505,8 +505,8 @@ GlassSheen {}
           width: parent.width
           height: 36
           radius: 11
-          color: modeMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
-          GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
+          color: modeMouse.containsMouse && !Theme.glass ? Theme.fillHover : current ? Theme.fill : "transparent"
+          GlassSheen { strength: 0.8; visible: Theme.glass && parent.current; takeFill: true; lit: modeMouse.containsMouse; pressed: modeMouse.pressed }
           Icon {
             id: modeIcon
             x: 10
@@ -550,7 +550,7 @@ GlassSheen {}
         width: parent.width
         height: 38
         radius: 11
-        color: glassMouse.containsMouse ? Theme.fillHover : "transparent"
+        color: glassMouse.containsMouse && !Theme.glass ? Theme.fillHover : "transparent"
         Icon {
           id: glassIcon
           x: 10

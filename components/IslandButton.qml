@@ -62,11 +62,14 @@ FocusScope {
     anchors.fill: parent
     radius: height / 2
     color: button.prominent ? button.tint
-      : !button.filled ? (button.down ? Theme.fill : button.hovered ? Theme.hairline : "transparent")
+      : !button.filled ? (Theme.glass ? "transparent" : button.down ? Theme.fill : button.hovered ? Theme.hairline : "transparent")
       : button.down ? Theme.fillPressed : button.hovered ? Theme.fillHover : button.fillColor
     GlassSheen {
-      visible: Theme.glass && (button.filled || button.prominent || button.hovered)
-      lit: button.hovered || button.down
+      visible: Theme.glass && (button.filled || button.prominent)
+      takeFill: true
+      fill: button.prominent ? button.tint : button.fillColor
+      lit: button.hovered
+      pressed: button.down
       strength: button.prominent ? 0.8 : 1
     }
     scale: button.down ? 0.92 : 1

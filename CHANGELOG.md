@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.18.1
+
+- Liquid Glass: hovering a button, tile, card, session row, shelf item or menu row no longer lays
+  a lighter highlight over it. The glass body swells a few pixels in place with a soft
+  water-balloon overshoot (and gives a little when pressed); only the body moves, so text and
+  icons stay sharp and nothing around it shifts. Normal theme unchanged.
+
 ## 1.18.0
 
 - Session scan (`bin/dynamic-island-scan`): finds the agent sessions open right now from /proc

@@ -198,7 +198,7 @@ GlassSheen { strength: 0.6 }
     height: 30
     radius: 15
     color: chipMouse.containsMouse || page.pickerOpen ? Theme.fillHover : Theme.fill
-    GlassSheen { lit: chipMouse.containsMouse }
+    GlassSheen { takeFill: true; fill: page.pickerOpen ? Theme.fillHover : Theme.fill; lit: chipMouse.containsMouse; pressed: chipMouse.pressed }
     Behavior on color { ColorAnimation { duration: Theme.ms(140) } }
 
     Row {
@@ -326,8 +326,8 @@ GlassSheen { strength: 0.6 }
         width: ListView.view.width
         height: 40
         radius: 11
-        color: optMouse.containsMouse ? Theme.fillHover : current ? Theme.fill : "transparent"
-        GlassSheen { strength: 0.8; visible: Theme.glass && parent.current }
+        color: optMouse.containsMouse && !Theme.glass ? Theme.fillHover : current ? Theme.fill : "transparent"
+        GlassSheen { strength: 0.8; visible: Theme.glass && parent.current; takeFill: true; lit: optMouse.containsMouse; pressed: optMouse.pressed }
 
         Icon {
           id: optIcon
