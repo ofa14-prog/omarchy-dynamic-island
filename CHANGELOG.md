@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.17.3
+
+- Removed the sideways shake on notifications (permission, question, agent error).
+- Closed Liquid Glass island: no more swell toward the pointer; hovering only grows it slightly,
+  as in the Normal theme.
+
 ## 1.17.2
 
 - The AI page favours no agent. It opens on the agent you picked, else the one working or

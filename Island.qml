@@ -59,7 +59,6 @@ import "components/Agents.js" as Agents
 //   pointer hover                            grows slightly (opens only with
 //                                            hoverExpand); click opens
 //   pointer leaves (opened by pointer)       closes after collapseDelay
-//   permission / question / agent error      short horizontal shake (nudge)
 //
 //   Agent session states and the events behind them are documented in
 //   services/AgentBridge.qml.
@@ -396,10 +395,8 @@ Item {
     onPermissionArrived: request => {
       if (island.cfg("autoExpandPermission")) {
         island.openPage("permission", "alert")
-        island.nudge()
       } else {
         island.peek("agent:" + request.agent, I18n.t("%1 izin istiyor").arg(island.profile(request.agent).name), request.project + " · " + request.tool, island.profile(request.agent).color, 3500)
-        island.nudge()
       }
     }
     onPermissionResolved: (requestId, how) => {
@@ -413,7 +410,6 @@ Item {
     onSessionFailed: s => {
       if (island.mode !== "expanded") {
         island.peek("agent:" + s.agent, I18n.t("%1 bir hatayla durdu").arg(island.profile(s.agent).name), s.project + (s.error ? " · " + s.error : ""), Theme.red, 3600, "agent")
-        island.nudge()
       }
     }
     onSessionFinished: s => {
@@ -425,7 +421,6 @@ Item {
       var title = (s.state === "notice" ? I18n.t("%1 izin istiyor") : message ? I18n.t("%1 soruyor") : I18n.t("%1 seni bekliyor")).arg(island.profile(s.agent).name)
       var detail = s.state === "notice" ? (s.title || s.project) : (message || s.project)
       island.peek("agent:" + s.agent, title, detail, island.profile(s.agent).color, 4000, "agent")
-      island.nudge()
     }
   }
 
@@ -724,23 +719,6 @@ Item {
     NumberAnimation { target: island; property: "shakeX"; to: 10; duration: 80; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: -8; duration: 75; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: 6; duration: 70; easing.type: Easing.InOutSine }
-    NumberAnimation { target: island; property: "shakeX"; to: -3; duration: 65; easing.type: Easing.InOutSine }
-    NumberAnimation { target: island; property: "shakeX"; to: 0; duration: 60; easing.type: Easing.OutSine }
-  }
-
-  // A notification that wants you (a permission, a question, an error): a
-  // short, light side-to-side shake, like a notification on iPhone. Lighter
-  // and quicker than shake(), which says "no".
-  function nudge() {
-    if (Theme.reduceMotion) return
-    nudgeStart.restart()
-  }
-  // Starts once the banner has begun to open, so the shake reads on it.
-  Timer { id: nudgeStart; interval: 140; onTriggered: nudgeAnim.restart() }
-  SequentialAnimation {
-    id: nudgeAnim
-    NumberAnimation { target: island; property: "shakeX"; to: -6; duration: 50; easing.type: Easing.OutSine }
-    NumberAnimation { target: island; property: "shakeX"; to: 5; duration: 70; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: -3; duration: 65; easing.type: Easing.InOutSine }
     NumberAnimation { target: island; property: "shakeX"; to: 0; duration: 60; easing.type: Easing.OutSine }
   }
@@ -1170,7 +1148,8 @@ Item {
         Binding {
           target: island
           property: "pullAmp"
-          value: island.glassOn && island.mode === "compact" && hover.hovered && !Theme.reduceMotion ? 5 : 0
+          // Off: hovering the closed island only grows it a little.
+          value: 0
         }
         Binding {
           target: island

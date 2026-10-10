@@ -40,8 +40,7 @@ OpenCode). Araç izinlerini doğrudan adadan onaylayabilir ya da reddedebilirsin
   yalnızca adanın katmanı için çalışma anında kurulur; `"glass": false` hepsini kapatır,
   `"glassOpacity"` camın koyuluğunu ayarlar. Sekme çubuğundaki seçim küçük bir cam mercektir;
   seçtiğiniz sekmeye damla gibi uzanır ve sonra toparlanır (iki kenarı ayrı yaylarla hareket eder).
-  Merceği tutup çubuk boyunca sürükleyebilirsiniz; bırakınca en yakın sekmeye oturur. Kapalı adanın
-  üzerinde cam imlece doğru yumuşakça şişer, imleç ayrılınca geri akar; hiç kopmaz.
+  Merceği tutup çubuk boyunca sürükleyebilirsiniz; bırakınca en yakın sekmeye oturur. 
 - Liquid Glass temasında tüm düğmeler, kutular, kartlar, satırlar ve açılır menüler de cam görünümündedir.
 - **Tema**: Ana sayfada bayrağın yanındaki düğmeden **Koyu** ya da **Açık** görünüm ve her ikisinde
   açılıp kapatılabilen **Liquid Glass** seçilir (`appearance` ve `glass`). Dört görünüm: düz siyah,
