@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.17.1
+
+- AI page with no agent running: the agent bar lists every installed agent (not just the
+  default one); picking one switches the page, its usage, Connect and "New session" to it.
+  While agents run, the bar still lists only the running ones.
+
 ## 1.17.0
 
 - **Light appearance**: a white island with near-black content, iOS light system colors, light

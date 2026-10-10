@@ -14,7 +14,7 @@ Page {
   // The page shows one agent at a time (island.pageAgent); the bar switches
   // between the agents that are running.
   readonly property string agentId: island.pageAgent
-  readonly property bool perAgent: island.runningAgents.length > 1
+  readonly property bool perAgent: island.barAgents.length > 1
   readonly property var sessions: agents.sessionList.filter(s => !perAgent || s.agent === agentId).slice(0, 4)
   readonly property string product: island.profile(agentId).product
   readonly property color tint: island.profile(agentId).color
@@ -143,12 +143,12 @@ Page {
         // open it sideways onto every installed agent, click one to switch.
         Rectangle {
           id: agentBar
-          visible: island.runningAgents.length > 1
+          visible: island.barAgents.length > 1
           anchors.verticalCenter: parent.verticalCenter
           property bool open: false
           readonly property int chip: 30
           // Current agent first, the rest after it.
-          readonly property var order: [page.agentId].concat(island.runningAgents.filter(a => a !== page.agentId))
+          readonly property var order: [page.agentId].concat(island.barAgents.filter(a => a !== page.agentId))
           readonly property int closedW: chip + 18
           readonly property int openW: order.length * (chip + 2) + 2
           // Another agent has a session running, or one that needs you.

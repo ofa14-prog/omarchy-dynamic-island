@@ -240,7 +240,11 @@ Item {
     if (mode === "compact") viewAgent = ""
     glassModeMotion()
   }
-  readonly property string pageAgent: viewAgent && runningAgents.indexOf(viewAgent) !== -1 ? viewAgent
+  // The agents the AI page's bar offers: the running ones; with none
+  // running, every installed agent (so you can still pick one, see its
+  // usage, connect it or start a session of it).
+  readonly property var barAgents: runningAgents.length ? runningAgents : usageAgents
+  readonly property string pageAgent: viewAgent && barAgents.indexOf(viewAgent) !== -1 ? viewAgent
     : runningAgents.length ? runningAgents[0] : agentId
   function showAgent(id) {
     viewAgent = id || ""

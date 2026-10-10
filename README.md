@@ -62,7 +62,8 @@ right from the island.
   folder in your editor, start a new session.
 - **AI tab**: named after what is running: the agent's mark and name when one agent has a live
   session, only the marks when several do (two, then "…"), and "AI" when none does.
-- **Agent bar**: with several agents running, the AI page's mark becomes a small bar. Click it to
+- **Agent bar**: with several agents running (or, when none runs, several installed), the AI
+  page's mark becomes a small bar. Click it to
   open it onto the running agents and pick one: sessions, live feed, usage, Connect and "New
   session" switch to it. It opens on the most urgent agent (waiting on you, then working) and
   goes back to that after the island closes. A dot on the closed bar, or on an agent's icon,
